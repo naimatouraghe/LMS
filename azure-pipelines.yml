@@ -1,0 +1,44 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: 'windows-latest'
+
+jobs:
+- job: Build
+  steps:
+    # Install Node.js for React
+    - task: UseNode@1
+      inputs:
+        versionSpec: '18.x'
+
+    # Install dependencies and build the React app
+    - script: |
+        cd client
+        npm install
+        npm run build
+      displayName: 'Build React Application'
+
+    # Setup .NET Core for the backend
+    - task: UseDotNet@2
+      inputs:
+        packageType: 'sdk'
+        version: '8.x' # Specify your .NET version here
+
+    # Restore, build, and publish the .NET project
+    - script: |
+        cd ../server
+        dotnet restore
+        dotnet build --configuration Release
+        dotnet publish --configuration Release --output $(Build.ArtifactStagingDirectory)/publish
+      displayName: 'Build and Publish .NET Application'
+
+    # Publish the artifacts for deployment
+    - task: PublishBuildArtifacts@1
+      inputs:
+        pathToPublish: '$(Build.ArtifactStagingDirectory)/publish'
+        artifactName: 'drop'
+        publishLocation: 'Container'
+      displayName: 'Publish Artifacts'
