@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CourseCard } from "@/components/CourseCard";
 import { Clock, CheckCircle } from "lucide-react";
-
+import NavbarDekstop from "@/Components/NavbarDekstop";
 const Dashboard = () => {
     const [courses] = useState([
         // Cours complété
@@ -237,7 +237,12 @@ const Dashboard = () => {
     });
 
     return (
-        <div>
+        <>
+        <div className="hidden md:block space-y-4">
+        <NavbarDekstop/>
+        </div>
+        <div className="p-1 m-5">
+            
             {/* Stats Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                <div className="bg-slate-100 rounded-lg p-4 flex items-center gap-4">
@@ -281,6 +286,7 @@ const Dashboard = () => {
                 ))}
             </div>
         </div>
+        </>
     );
 };
 
