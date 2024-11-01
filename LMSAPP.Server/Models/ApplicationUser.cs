@@ -6,10 +6,15 @@ namespace LMSAPP.Server.Models
     public class ApplicationUser : IdentityUser
     {
         public string FullName { get; set; }
-        public DateTime DateJoined { get; set; } = DateTime.UtcNow;
+        // Propriétés de navigation pour les relations
+        public virtual ICollection<Purchase> Purchases { get; set; }
+        public virtual ICollection<UserProgress> UserProgress { get; set; }
+        public virtual StripeCustomer StripeCustomer { get; set; }
 
-        // Navigation properties
-        public List<UserProgress> Progresses { get; set; } = new List<UserProgress>();
-        public List<Purchase> Purchases { get; set; } = new List<Purchase>();
+        public ApplicationUser()
+        {
+            Purchases = new HashSet<Purchase>();
+            UserProgress = new HashSet<UserProgress>();
+        }
     }
 }

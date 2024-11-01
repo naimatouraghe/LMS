@@ -1,9 +1,9 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using LMSAPP.Server.Models;
 
 namespace LMSAPP.Server.Services
 {
     public interface ITokenService
     {
-        string CreateToken(IdentityUser user);
+        Task<string> CreateToken(ApplicationUser user);
     }
 }

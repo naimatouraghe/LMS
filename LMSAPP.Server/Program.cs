@@ -1,3 +1,5 @@
+using LMSAPP.Server.Models;
+using LMSAPP.Server.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -24,7 +26,7 @@ namespace LMSAPP.Server
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
             // Configure Identity
-            builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
+            builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
             {
                 options.Password.RequireDigit = true;
                 options.Password.RequireLowercase = true;
@@ -41,24 +43,32 @@ namespace LMSAPP.Server
             var issuer = builder.Configuration["Jwt:Issuer"];
             var audience = builder.Configuration["Jwt:Audience"];
 
-            builder.Services.AddAuthentication(options =>
-            {
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            })
-            .AddJwtBearer(options =>
-            {
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = issuer,
-                    ValidAudience = audience,
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key))
-                };
-            });
+      var jwtSettings = builder.Configuration.GetSection("JWT");
+if (string.IsNullOrEmpty(jwtSettings["Secret"]))
+{
+    throw new InvalidOperationException("JWT Secret key is not configured in appsettings.json");
+}
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtSettings["ValidIssuer"],
+        ValidAudience = jwtSettings["ValidAudience"],
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(jwtSettings["Secret"])
+        )
+    };
+});
 
             // Add authorization policies for roles
             builder.Services.AddAuthorization(options =>
@@ -67,7 +77,19 @@ namespace LMSAPP.Server
                 options.AddPolicy("RequireTeacherRole", policy => policy.RequireRole("Teacher"));
                 options.AddPolicy("RequireStudentRole", policy => policy.RequireRole("Student"));
             });
-
+            builder.Services.AddScoped<ITokenService, TokenService>();
+            builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll",
+        builder =>
+        {
+            builder
+                .WithOrigins("https://localhost:5173") // URL de votre frontend
+                .AllowAnyMethod()
+                .AllowAnyHeader()
+                .AllowCredentials();
+        });
+});
             var app = builder.Build();
 
             app.UseDefaultFiles();
@@ -82,7 +104,8 @@ namespace LMSAPP.Server
 
             app.UseHttpsRedirection();
 
-            app.UseAuthentication(); // Add this line for authentication
+            app.UseAuthentication(); 
+            app.UseCors("AllowAll");// Add this line for authentication
             app.UseAuthorization();   // Make sure authorization is enabled
 
             app.MapControllers(); // Maps the controller endpoints

@@ -3,7 +3,11 @@ import { useState } from 'react';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import Browse from './pages/Browse';
-import Dashboard from './pages/Dashboard';
+// ... existing code ...
+import Dashboard from './Pages/Dashboard';
+import Register from './Pages/Register';
+import Login from './Pages/Login';
+// ... existing code ...
 
 function App() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -28,6 +32,9 @@ function App() {
                         <Routes>
                             <Route path="/" element={<Dashboard />} />
                             <Route path="/browse" element={<Browse />} />
+                            
+                            <Route path="/register" element={<Register />} />
+                            <Route path="/login" element={<Login />} />
                         </Routes>
                     </div>
                 </main>
