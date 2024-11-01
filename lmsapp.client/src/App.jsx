@@ -1,4 +1,3 @@
-// src/App.js
 import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
 import { useState } from 'react';
 import Sidebar from './components/Sidebar';
@@ -11,60 +10,59 @@ function App() {
 
     return (
         <Router>
-            <div className="flex min-h-screen bg-gray-100">
-                {/* Sidebar for Desktop and Tablet */}
-                <div className="hidden lg:block w-64 bg-gray-800 text-white">
+            <div className="h-full">
+                {/* Sidebar - Fixed on desktop, hidden on mobile */}
+                <div className="hidden md:flex h-full w-72 flex-col fixed inset-y-0 z-50 bg-gray-900">
                     <Sidebar />
                 </div>
 
-                {/* Mobile Navbar */}
-                <div className="lg:hidden w-full">
-                    <Navbar setIsMenuOpen={setIsMenuOpen} />
-                    <Routes>
-                        <Route path="/" element={<Dashboard />} />
-                        <Route path="/browse" element={<Browse />} />
-                    </Routes>
-                </div>
-               
+                {/* Main Content */}
+                <main className="md:pl-72 h-full">
+                    {/* Mobile Navbar */}
+                    <div className="md:hidden">
+                        <Navbar setIsMenuOpen={setIsMenuOpen} />
+                    </div>
 
-                {/* Full-Width Menu for Mobile */}
+                    {/* Content Area - Shown on all devices */}
+                    <div className="p-6">
+                        <Routes>
+                            <Route path="/" element={<Dashboard />} />
+                            <Route path="/browse" element={<Browse />} />
+                        </Routes>
+                    </div>
+                </main>
+
+                {/* Mobile Menu Overlay */}
                 {isMenuOpen && (
-                    <div className="fixed inset-0 bg-black bg-opacity-75 z-40 flex flex-col">
-                        <div className="flex justify-end p-4">
-                            <button
-                                className="text-white"
-                                onClick={() => setIsMenuOpen(false)}
-                            >
-                                ✕
-                            </button>
+                    <div className="fixed inset-0 bg-black bg-opacity-75 z-50 md:hidden">
+                        <div className="flex h-full flex-col">
+                            <div className="flex justify-end p-4">
+                                <button
+                                    className="text-white"
+                                    onClick={() => setIsMenuOpen(false)}
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                            <nav className="flex-grow flex flex-col items-center justify-center">
+                                <Link
+                                    to="/"
+                                    className="text-white py-4 text-xl hover:text-gray-300 transition"
+                                    onClick={() => setIsMenuOpen(false)}
+                                >
+                                    Dashboard
+                                </Link>
+                                <Link
+                                    to="/browse"
+                                    className="text-white py-4 text-xl hover:text-gray-300 transition"
+                                    onClick={() => setIsMenuOpen(false)}
+                                >
+                                    Browse
+                                </Link>
+                            </nav>
                         </div>
-                        <nav className="flex-grow flex flex-col items-center justify-center">
-                            <Link
-                                to="/"
-                                className="text-white py-4 text-xl"
-                                onClick={() => setIsMenuOpen(false)}
-                            >
-                                Dashboard
-                            </Link>
-                            <Link
-                                to="/browse"
-                                className="text-white py-4 text-xl"
-                                onClick={() => setIsMenuOpen(false)}
-                            >
-                                Browse
-                            </Link>
-                            {/* Add more navigation links here */}
-                        </nav>
                     </div>
                 )}
-
-                {/* Main Content Area */}
-               {/* <div className="flex-grow p-6">
-                    <Routes>
-                        <Route path="/" element={<Dashboard />} />
-                        <Route path="/browse" element={<Browse />} />
-                    </Routes>
-                </div>*/}
             </div>
         </Router>
     );
