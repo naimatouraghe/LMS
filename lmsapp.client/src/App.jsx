@@ -59,6 +59,13 @@ function App() {
                                 >
                                     Browse
                                 </Link>
+                                <Link
+                                    to="/profile"
+                                    className="text-white py-4 text-xl hover:text-gray-300 transition"
+                                    onClick={() => setIsMenuOpen(false)}
+                                >
+                                    Profile
+                                </Link>
                             </nav>
                         </div>
                     </div>

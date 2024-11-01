@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Filters } from "@/components/Filters";
 import { CourseCard } from "@/components/CourseCard";
+import NavbarDekstop from "@/components/NavbarDekstop";
 
 const Browse = () => {
     const [selectedCategory, setSelectedCategory] = useState(null);
@@ -380,14 +381,11 @@ const Browse = () => {
     });
 
     return (
-        <div className="p-6">
-            {/* Header */}
-            <div className="mb-8">
-                <h1 className="text-2xl font-bold">Browse Courses</h1>
-                <p className="text-slate-500">
-                    Explore our wide range of courses and find what interests you.
-                </p>
-            </div>
+        <>
+            <div className="hidden md:block space-y-4">
+        <NavbarDekstop/>
+        </div>
+        <div className="p-1">
 
             {/* Filtres */}
             <div className="mb-6">
@@ -414,6 +412,7 @@ const Browse = () => {
                 ))}
             </div>
         </div>
+        </>
     );
 };
 export default Browse;

@@ -99,17 +99,7 @@ export const Filters = ({
             {/* Desktop & Tablet View */}
             <div className="hidden md:block space-y-4">
                 {/* Search Bar */}
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input
-                        type="text"
-                        placeholder="Search courses..."
-                        value={searchQuery}
-                        onChange={(e) => onSearchChange(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 rounded-xl border bg-white focus:ring-2 focus:ring-slate-200 transition"
-                    />
-                </div>
-
+              
                 {/* All Filters Row */}
                 <div className="flex flex-wrap gap-2">
                     {/* Category Filter */}
