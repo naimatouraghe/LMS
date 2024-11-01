@@ -5,6 +5,8 @@ trigger:
 
 pool:
   vmImage: 'windows-latest'
+variables:
+  System.Debug: true
 
 jobs:
 - job: Build
