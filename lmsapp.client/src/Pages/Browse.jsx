@@ -1,77 +1,62 @@
-import { useState, useEffect } from 'react';
-// ... existing code ...
-import  NavbarDesktop  from '@/Components/NavbarDesktop';
-import {Filters} from '@/Components/Filters';
-import { CourseCard } from '../components/CourseCard';
-// ... rest of the file ...
+import { useState, useEffect } from "react";
+import axios from "axios";
+import { Filters } from "../components/Filters";
+import { CourseCard } from "../components/CourseCard";
+import NavbarDesktop from "@/components/NavbarDesktop";
 const Browse = () => {
     const [courses, setCourses] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [selectedCategory, setSelectedCategory] = useState('');
-    const [selectedPrice, setSelectedPrice] = useState('');
-    const [selectedSort, setSelectedSort] = useState('');
-    const [searchQuery, setSearchQuery] = useState('');
+    const [filteredCourses, setFilteredCourses] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
+    
+    // Filter states
+    const [selectedCategory, setSelectedCategory] = useState(null);
+    const [selectedPrice, setSelectedPrice] = useState("all");
+    const [selectedSort, setSelectedSort] = useState(null);
+    const [selectedLevel, setSelectedLevel] = useState("all");
+    const [searchQuery, setSearchQuery] = useState("");
 
+    // Fetch courses with filters
     useEffect(() => {
         const fetchCourses = async () => {
             try {
-                const response = await fetch('https://localhost:7001/api/Course');
-                const data = await response.json();
-                setCourses(data);
-            } catch (error) {
-                console.error('Error fetching courses:', error);
+                setIsLoading(true);
+                
+                // Construct query parameters
+                const params = new URLSearchParams();
+                if (selectedCategory) params.append("category", selectedCategory);
+                if (selectedPrice !== "all") params.append("price", selectedPrice);
+                if (selectedLevel !== "all") params.append("level", selectedLevel);
+                if (searchQuery) params.append("search", searchQuery);
+                if (selectedSort) params.append("sort", selectedSort);
+
+                const response = await axios.get(`https://localhost:7001/api/Course/filter?${params}`);
+                setFilteredCourses(response.data);
+            } catch (err) {
+                setError("Error loading courses");
+                console.error(err);
             } finally {
-                setLoading(false);
+                setIsLoading(false);
             }
         };
 
         fetchCourses();
-    }, []);
+    }, [selectedCategory, selectedPrice, selectedLevel, selectedSort, searchQuery]);
 
-    // Filtrer les cours en fonction des critères sélectionnés
-    const filteredCourses = courses.filter(course => {
-        // Filtre par catégorie
-        if (selectedCategory && course.category.id !== selectedCategory) {
-            return false;
-        }
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900" />
+            </div>
+        );
+    }
 
-        // Filtre par prix
-        if (selectedPrice === 'free' && course.price !== 0) {
-            return false;
-        }
-        if (selectedPrice === 'paid' && course.price === 0) {
-            return false;
-        }
-
-        // Filtre par recherche
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            return (
-                course.title.toLowerCase().includes(query) ||
-                course.description.toLowerCase().includes(query) ||
-                course.category.name.toLowerCase().includes(query)
-            );
-        }
-
-        return true;
-    });
-
-    // Trier les cours
-    const sortedCourses = [...filteredCourses].sort((a, b) => {
-        switch (selectedSort) {
-            case 'title':
-                return a.title.localeCompare(b.title);
-            case 'price_low':
-                return (a.price || 0) - (b.price || 0);
-            case 'price_high':
-                return (b.price || 0) - (a.price || 0);
-            default:
-                return 0;
-        }
-    });
-
-    if (loading) {
-        return <div>Chargement...</div>;
+    if (error) {
+        return (
+            <div className="text-red-500 text-center p-4">
+                {error}
+            </div>
+        );
     }
 
     return (
@@ -82,30 +67,44 @@ const Browse = () => {
             <div className="p-1">
                 {/* Filtres */}
                 <div className="mb-6">
-                    <Filters
-                        selectedCategory={selectedCategory}
-                        onSelectCategory={setSelectedCategory}
-                        selectedPrice={selectedPrice}
-                        onSelectPrice={setSelectedPrice}
-                        selectedSort={selectedSort}
-                        onSelectSort={setSelectedSort}
-                        searchQuery={searchQuery}
-                        onSearchChange={setSearchQuery}
-                    />
-                </div>
+            <Filters
+                selectedCategory={selectedCategory}
+                onSelectCategory={setSelectedCategory}
+                selectedPrice={selectedPrice}
+                onSelectPrice={setSelectedPrice}
+                selectedSort={selectedSort}
+                onSelectSort={setSelectedSort}
+                selectedLevel={selectedLevel}
+                onSelectLevel={setSelectedLevel}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+            />
 
-                {/* Grille de cours */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {sortedCourses.map((course) => (
-                        <CourseCard
-                            key={course.id}
-                            course={course}
-                        />
-                    ))}
+            {/* Results count */}
+            <div className="mt-6 mb-4">
+                <p className="text-slate-600">
+                    {filteredCourses.length} {filteredCourses.length === 1 ? "course" : "courses"} found
+                </p>
+            </div>
+
+            {/* Courses grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredCourses.map((course) => (
+                    <CourseCard key={course.id} course={course} />
+                ))}
+            </div>
+
+            {/* No results message */}
+            {filteredCourses.length === 0 && (
+                <div className="text-center py-12">
+                    <p className="text-slate-600">No courses found matching your criteria</p>
+                </div>
+            )}
                 </div>
             </div>
         </>
     );
 };
+
 
 export default Browse;

@@ -14,6 +14,16 @@ export const sortOptions = [
     { label: "Price: High to Low", value: "price-desc" },
 ];
 
+export const levelOptions = [
+    { label: "All levels", value: "all" },
+    { label: "Beginner (A1)", value: "A1" },
+    { label: "Elementary (A2)", value: "A2" },
+    { label: "Intermediate (B1)", value: "B1" },
+    { label: "Upper Intermediate (B2)", value: "B2" },
+    { label: "Advanced (C1)", value: "C1" },
+    { label: "Mastery (C2)", value: "C2" },
+];
+
 export const iconMap = {
     "English": "GB",
     "French": "FR",

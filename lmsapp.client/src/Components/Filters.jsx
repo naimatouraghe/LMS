@@ -4,7 +4,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import * as Tabs from '@radix-ui/react-tabs';
 import axios from 'axios';
 import ReactCountryFlag from "react-country-flag";
-import { priceRanges, sortOptions, iconMap } from '../constants/filters';
+import { priceRanges, sortOptions, levelOptions, iconMap } from '../constants/filters';
 
 export const Filters = ({
     selectedCategory,
@@ -13,6 +13,8 @@ export const Filters = ({
     onSelectPrice,
     selectedSort,
     onSelectSort,
+    selectedLevel,
+    onSelectLevel,
     searchQuery,
     onSearchChange,
 }) => {
@@ -22,6 +24,7 @@ export const Filters = ({
     const [isOpen, setIsOpen] = useState(false);
     const [isCategoryOpen, setIsCategoryOpen] = useState(false);
     const [isPriceOpen, setIsPriceOpen] = useState(false);
+    const [isLevelOpen, setIsLevelOpen] = useState(false);
     const [isSortOpen, setIsSortOpen] = useState(false);
 
     useEffect(() => {
@@ -80,65 +83,77 @@ export const Filters = ({
     return (
         <div className="space-y-4">
             {/* Mobile View */}
-<div className="md:hidden">
-    <div className="flex gap-2">
-        <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-                type="text"
-                placeholder="Search courses..."
-                value={searchQuery || ""}
-                onChange={(e) => onSearchChange(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-full border bg-white focus:ring-2 focus:ring-slate-200 transition"
-            />
-        </div>
-        <button
-            onClick={() => setIsOpen(true)}
-            className="flex items-center justify-center w-10 h-10 rounded-full bg-white border hover:bg-slate-50"
-        >
-            <Filter className="w-4 h-4" />
-        </button>
-    </div>
+            <div className="md:hidden">
+                <div className="flex gap-2">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input
+                            type="text"
+                            placeholder="Search courses..."
+                            value={searchQuery || ""}
+                            onChange={(e) => onSearchChange(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2.5 rounded-full border bg-white focus:ring-2 focus:ring-slate-200 transition"
+                        />
+                    </div>
+                    <button
+                        onClick={() => setIsOpen(true)}
+                        className="flex items-center justify-center w-10 h-10 rounded-full bg-white border hover:bg-slate-50"
+                    >
+                        <Filter className="w-4 h-4" />
+                    </button>
+                </div>
 
-    {/* Active Filters - Mobile */}
-    {(selectedCategory || (selectedPrice && selectedPrice !== "all") || searchQuery) && (
-        <div className="flex gap-2 overflow-x-auto pb-2 mt-2">
-            {selectedCategory && (
-                <span className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-100 text-sm whitespace-nowrap">
-                    {renderFlag(selectedCategoryData?.countryCode)} {selectedCategory}
-                    <span
-                        onClick={() => onSelectCategory(null)}
-                        className="ml-1 hover:text-slate-700 cursor-pointer"
-                    >
-                        ×
-                    </span>
-                </span>
-            )}
-            {selectedPrice && selectedPrice !== "all" && (
-                <span className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-100 text-sm whitespace-nowrap">
-                    {priceRanges.find(p => p.value === selectedPrice)?.label}
-                    <span
-                        onClick={() => onSelectPrice("all")}
-                        className="ml-1 hover:text-slate-700 cursor-pointer"
-                    >
-                        ×
-                    </span>
-                </span>
-            )}
-            {searchQuery && (
-                <span className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-100 text-sm whitespace-nowrap">
-                    Search: "{searchQuery}"
-                    <span
-                        onClick={() => onSearchChange("")}
-                        className="ml-1 hover:text-slate-700 cursor-pointer"
-                    >
-                        ×
-                    </span>
-                </span>
-            )}
-        </div>
-    )}
-</div>
+                {/* Active Filters - Mobile */}
+                {(selectedCategory || (selectedPrice && selectedPrice !== "all") || 
+                  (selectedLevel && selectedLevel !== "all") || searchQuery) && (
+                    <div className="flex gap-2 overflow-x-auto pb-2 mt-2">
+                        {selectedCategory && (
+                            <span className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-100 text-sm whitespace-nowrap">
+                                {renderFlag(selectedCategoryData?.countryCode)} {selectedCategory}
+                                <span
+                                    onClick={() => onSelectCategory(null)}
+                                    className="ml-1 hover:text-slate-700 cursor-pointer"
+                                >
+                                    ×
+                                </span>
+                            </span>
+                        )}
+                        {selectedPrice && selectedPrice !== "all" && (
+                            <span className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-100 text-sm whitespace-nowrap">
+                                {priceRanges.find(p => p.value === selectedPrice)?.label}
+                                <span
+                                    onClick={() => onSelectPrice("all")}
+                                    className="ml-1 hover:text-slate-700 cursor-pointer"
+                                >
+                                    ×
+                                </span>
+                            </span>
+                        )}
+                        {selectedLevel && selectedLevel !== "all" && (
+                            <span className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-100 text-sm whitespace-nowrap">
+                                {levelOptions.find(l => l.value === selectedLevel)?.label}
+                                <span
+                                    onClick={() => onSelectLevel("all")}
+                                    className="ml-1 hover:text-slate-700 cursor-pointer"
+                                >
+                                    ×
+                                </span>
+                            </span>
+                        )}
+                        {searchQuery && (
+                            <span className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-slate-100 text-sm whitespace-nowrap">
+                                Search: "{searchQuery}"
+                                <span
+                                    onClick={() => onSearchChange("")}
+                                    className="ml-1 hover:text-slate-700 cursor-pointer"
+                                >
+                                    ×
+                                </span>
+                            </span>
+                        )}
+                    </div>
+                )}
+            </div>
 
             {/* Desktop View */}
             <div className="hidden md:flex items-center gap-2">
@@ -259,6 +274,59 @@ export const Filters = ({
                     )}
                 </div>
 
+                {/* Level Filter */}
+                <div className="relative">
+                    <button
+                        onClick={() => setIsLevelOpen(!isLevelOpen)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-white border hover:bg-slate-50 transition"
+                    >
+                        {selectedLevel && selectedLevel !== "all" ? (
+                            <>
+                                <span className="text-sm font-medium">
+                                    {levelOptions.find(l => l.value === selectedLevel)?.label}
+                                </span>
+                                <span
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onSelectLevel("all");
+                                    }}
+                                    className="ml-1 hover:text-slate-700 cursor-pointer"
+                                >
+                                    ×
+                                </span>
+                            </>
+                        ) : (
+                            <>
+                                <span className="text-sm font-medium">All levels</span>
+                                <ChevronDown className="w-4 h-4" />
+                            </>
+                        )}
+                    </button>
+                    {isLevelOpen && (
+                        <>
+                            <div 
+                                className="fixed inset-0 z-40" 
+                                onClick={() => setIsLevelOpen(false)}
+                            />
+                            <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border p-2 z-50">
+                                {levelOptions.map((level) => (
+                                    <button
+                                        key={level.value}
+                                        onClick={() => {
+                                            onSelectLevel(level.value);
+                                            setIsLevelOpen(false);
+                                        }}
+                                        className={`w-full text-left px-3 py-2 rounded-md text-sm transition
+                                            ${selectedLevel === level.value ? "bg-slate-100" : "hover:bg-slate-50"}`}
+                                    >
+                                        {level.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </div>
+
                 {/* Sort Filter */}
                 <div className="relative">
                     <button
@@ -344,6 +412,12 @@ export const Filters = ({
                                     Price
                                 </Tabs.Trigger>
                                 <Tabs.Trigger 
+                                    value="level"
+                                    className="flex-1 px-4 py-3 text-sm font-medium text-slate-600 data-[state=active]:text-slate-900 data-[state=active]:border-b-2 data-[state=active]:border-slate-900"
+                                >
+                                    Level
+                                </Tabs.Trigger>
+                                <Tabs.Trigger 
                                     value="sort"
                                     className="flex-1 px-4 py-3 text-sm font-medium text-slate-600 data-[state=active]:text-slate-900 data-[state=active]:border-b-2 data-[state=active]:border-slate-900"
                                 >
@@ -395,6 +469,27 @@ export const Filters = ({
                                         >
                                             <span className="text-sm font-medium">{range.label}</span>
                                             {selectedPrice === range.value && (
+                                                <span className="text-slate-900">✓</span>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            </Tabs.Content>
+
+                            <Tabs.Content value="level" className="p-4 overflow-y-auto">
+                                <div className="space-y-2">
+                                    {levelOptions.map((level) => (
+                                        <button
+                                            key={level.value}
+                                            onClick={() => {
+                                                onSelectLevel(level.value);
+                                                setIsOpen(false);
+                                            }}
+                                            className={`w-full flex items-center justify-between p-4 rounded-xl border transition
+                                                ${selectedLevel === level.value ? "bg-slate-100 border-slate-900" : "hover:bg-slate-50"}`}
+                                        >
+                                            <span className="text-sm font-medium">{level.label}</span>
+                                            {selectedLevel === level.value && (
                                                 <span className="text-slate-900">✓</span>
                                             )}
                                         </button>
