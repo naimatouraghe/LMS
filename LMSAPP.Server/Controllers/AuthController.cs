@@ -1,5 +1,5 @@
-﻿using LMSAPP.Server.Models; // Add this to reference your models
-using LMSAPP.Server.Services; // Add this for ITokenService
+﻿using LMSAPP.Server.Models;
+using LMSAPP.Server.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,7 +18,6 @@ namespace LMSAPP.Server.Controllers
             _tokenService = tokenService;
         }
 
-        // Register a new user
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterModel model)
         {
@@ -27,7 +26,6 @@ namespace LMSAPP.Server.Controllers
 
             if (result.Succeeded)
             {
-                // Assign role to the user
                 await _userManager.AddToRoleAsync(user, model.Role);
                 return Ok("User registered successfully!");
             }
@@ -35,27 +33,42 @@ namespace LMSAPP.Server.Controllers
             return BadRequest(result.Errors);
         }
 
-        // Login an existing user
-       [HttpPost("login")]
+        [HttpPost("login")]
         public async Task<IActionResult> Login(LoginModel model)
         {
             var user = await _userManager.FindByEmailAsync(model.Email);
-            if (user != null && await _userManager.CheckPasswordAsync(user, model.Password))
+            
+            if (user == null)
             {
-                 var token = await _tokenService.CreateToken(user);
-                 var roles = await _userManager.GetRolesAsync(user);
+                return Unauthorized(new { message = "Email ou mot de passe incorrect" });
+            }
 
-             return Ok(new
+            // Vérifier si le compte est désactivé
+            if (user.LockoutEnabled && user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow)
             {
-                token = token,
-                id = user.Id,
-                email = user.Email,
-                fullName = user.FullName,
-                roles = roles
-            });
-    }
+                return Unauthorized(new { message = "Ce compte a été désactivé. Veuillez contacter l'administrateur." });
+            }
 
-    return Unauthorized(new { message = "Email ou mot de passe incorrect" });
-}
+            if (await _userManager.CheckPasswordAsync(user, model.Password))
+            {
+                var token = await _tokenService.CreateToken(user);
+                var roles = await _userManager.GetRolesAsync(user);
+
+                return Ok(new
+                {
+                    token = token,
+                    user = new
+                    {
+                        id = user.Id,
+                        email = user.Email,
+                        fullName = user.FullName,
+                        avatarPath = user.AvatarPath,
+                        roles = roles
+                    }
+                });
+            }
+
+            return Unauthorized(new { message = "Email ou mot de passe incorrect" });
+        }
     }
 }
