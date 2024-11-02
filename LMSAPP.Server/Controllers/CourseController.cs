@@ -259,6 +259,43 @@ if (!string.IsNullOrEmpty(level) && !level.Equals("all", StringComparison.Ordina
             return Ok(courses);
         }
 
+
+
+[HttpGet("search")]
+public async Task<ActionResult<IEnumerable<CourseDto>>> SearchCourses([FromQuery] string query)
+{
+    if (string.IsNullOrWhiteSpace(query))
+    {
+        return Ok(Array.Empty<CourseDto>());
+    }
+
+    var courses = await _context.Courses
+        .Include(c => c.Category)
+        .Where(c => 
+            c.IsPublished && 
+            (c.Title.Contains(query) || 
+            (c.Description != null && c.Description.Contains(query)))
+        )
+        .Take(10) // Limit results
+        .Select(c => new CourseDto
+        {
+            Id = c.Id.ToString(),
+            Title = c.Title,
+            Description = c.Description,
+            ImageUrl = c.ImageUrl,
+            Price = c.Price,
+            CategoryId = c.CategoryId.ToString(),
+            Category = new CategoryDto
+            {
+                Id = c.Category.Id.ToString(),
+                Name = c.Category.Name
+            }
+        })
+        .ToListAsync();
+
+    return Ok(courses);
+}
+
         private bool CourseExists(Guid id)
         {
             return _context.Courses.Any(e => e.Id == id);

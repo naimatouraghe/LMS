@@ -1,15 +1,64 @@
 import { User, Settings, LogOut } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useState, useRef, useEffect } from 'react';
+import axios from 'axios';
+import debounce from 'lodash/debounce';
 
 const NavbarDesktop = () => {
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout, user } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
   const menuRef = useRef(null);
+  const searchRef = useRef(null);
+  const navigate = useNavigate();
 
+  // Debounced search function
+  const debouncedSearch = debounce(async (query) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      setIsSearching(true);
+      const response = await axios.get(`https://localhost:7001/api/Course/search?query=${query}`);
+      setSearchResults(response.data);
+    } catch (error) {
+      console.error('Search error:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  }, 300);
+
+  // Handle search input change
+  const handleSearchChange = (e) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+    debouncedSearch(query);
+  };
+
+  // Handle search result click
+  const handleResultClick = (courseId) => {
+    setSearchQuery('');
+    setSearchResults([]);
+    navigate(`/courses/${courseId}`);
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    logout();
+    setIsMenuOpen(false);
+  };
+
+  // Close search results when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setSearchResults([]);
+      }
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setIsMenuOpen(false);
       }
@@ -19,53 +68,72 @@ const NavbarDesktop = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
-    logout();
-    setIsMenuOpen(false);
-  };
-
   return (
     <nav className="hidden lg:flex h-[80px] items-center justify-between px-6 bg-white shadow">
-      {/* Logo/Brand section */}
-      <div className="flex items-center">
-        <Link to="/" className="text-xl font-bold text-gray-800">
-          LMS
-        </Link>
-      </div>
-
       {/* Search section */}
-      <div className="flex-1 max-w-2xl mx-4">
+      <div className="flex-1 max-w-2xl mx-4" ref={searchRef}>
         <div className="relative">
           <input
             type="text"
+            value={searchQuery}
+            onChange={handleSearchChange}
             placeholder="Search for a course"
             className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button className="absolute right-2 top-1/2 transform -translate-y-1/2">
-            <svg
-              className="w-5 h-5 text-gray-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
+            {isSearching ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-500" />
+            ) : (
+              <svg
+                className="w-5 h-5 text-gray-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            )}
           </button>
+
+          {/* Search Results Dropdown */}
+          {searchResults.length > 0 && (
+            <div className="absolute w-full mt-2 bg-white rounded-md shadow-lg border border-gray-200 max-h-96 overflow-y-auto z-50">
+              {searchResults.map((course) => (
+                <div
+                  key={course.id}
+                  onClick={() => handleResultClick(course.id)}
+                  className="flex items-center p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
+                >
+                  {course.imageUrl && (
+                    <img
+                      src={course.imageUrl}
+                      alt={course.title}
+                      className="w-12 h-12 object-cover rounded-md mr-3"
+                    />
+                  )}
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-900">{course.title}</h4>
+                    <p className="text-xs text-gray-500">{course.category?.name}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Right Section - Conditional Rendering */}
       {isAuthenticated ? (
         <div className="flex items-center gap-x-4">
-          <div className="hidden md:flex">
-            <button className="text-sm font-medium">
-              Teacher mode
-            </button>
+          <div className="hidden md:flex items-center">
+            <span className="text-sm font-medium text-slate-700">
+              {user?.fullName}
+            </span>
           </div>
           <div className="relative" ref={menuRef}>
             <button 
@@ -96,12 +164,12 @@ const NavbarDesktop = () => {
                 </Link>
                 <div className="border-t border-gray-100"></div>
                 <button
-    onClick={handleLogout}
-    className="flex items-center w-full px-4 py-2 text-sm text-red-700 hover:bg-gray-100"
-  >
-    <LogOut className="h-4 w-4 mr-2" />
-    Logout
-  </button>
+                  onClick={handleLogout}
+                  className="flex items-center w-full px-4 py-2 text-sm text-red-700 hover:bg-gray-100"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </button>
               </div>
             )}
           </div>
