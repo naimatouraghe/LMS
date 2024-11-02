@@ -6,6 +6,7 @@ namespace LMSAPP.Server.Models
     public class ApplicationUser : IdentityUser
     {
         public string FullName { get; set; }
+         public string? AvatarPath { get; set; }
         // Propriétés de navigation pour les relations
         public virtual ICollection<Purchase> Purchases { get; set; }
         public virtual ICollection<UserProgress> UserProgress { get; set; }

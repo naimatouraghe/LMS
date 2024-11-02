@@ -7,6 +7,7 @@ import Browse from './pages/Browse';
 import Dashboard from './Pages/Dashboard';
 import Register from './Pages/Register';
 import Login from './Pages/Login';
+import Profile from './pages/Profile';
 // ... existing code ...
 import { AuthProvider } from './contexts/AuthContext';
 function App() {
@@ -34,7 +35,7 @@ function App() {
                         <Routes>
                             <Route path="/" element={<Dashboard />} />
                             <Route path="/browse" element={<Browse />} />
-                            
+                            <Route path="/profile" element={<Profile />} />
                             <Route path="/register" element={<Register />} />
                             <Route path="/login" element={<Login />} />
                         </Routes>

@@ -132,15 +132,29 @@ const NavbarDesktop = () => {
         <div className="flex items-center gap-x-4">
           <div className="hidden md:flex items-center">
             <span className="text-sm font-medium text-slate-700">
-              {user?.fullName}
+              {user?.fullName} 
             </span>
           </div>
           <div className="relative" ref={menuRef}>
             <button 
-              className="h-10 w-10 rounded-full bg-slate-900 flex items-center justify-center text-white hover:bg-slate-700 transition"
+              className="h-10 w-10 rounded-full flex items-center justify-center hover:opacity-80 transition overflow-hidden"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
-              <User className="h-5 w-5" />
+              {user?.avatarPath ? (
+                <img 
+                  src={user.avatarPath} 
+                  alt="Avatar" 
+                  className="h-full w-full object-cover"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = '/default-avatar.png';
+                  }}
+                />
+              ) : (
+                <div className="h-full w-full bg-slate-900 flex items-center justify-center text-white hover:bg-slate-700">
+                  <User className="h-5 w-5" />
+                </div>
+              )}
             </button>
 
             {/* Dropdown Menu */}
