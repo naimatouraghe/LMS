@@ -1,9 +1,14 @@
-﻿namespace lmsapp.Server.Models
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace lmsapp.Server.Models
 {
     public class Category
     {
-        public string Id { get; set; } = Guid.NewGuid().ToString();
-        public string Name { get; set; }
+        public Guid Id { get; set; }  // Utiliser Guid au lieu de string
+
+        [Required]
+        [StringLength(100)]
+        public string Name { get; set; } = string.Empty;
 
         public ICollection<Course> Courses { get; set; } = new List<Course>();
     }

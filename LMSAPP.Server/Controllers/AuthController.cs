@@ -37,22 +37,22 @@ namespace LMSAPP.Server.Controllers
 
         // Login an existing user
        [HttpPost("login")]
-public async Task<IActionResult> Login(LoginModel model)
-{
-    var user = await _userManager.FindByEmailAsync(model.Email);
-    if (user != null && await _userManager.CheckPasswordAsync(user, model.Password))
-    {
-        var token = await _tokenService.CreateToken(user);
-        var roles = await _userManager.GetRolesAsync(user);
-
-        return Ok(new
+        public async Task<IActionResult> Login(LoginModel model)
         {
-            token = token,
-            id = user.Id,
-            email = user.Email,
-            fullName = user.FullName,
-            roles = roles
-        });
+            var user = await _userManager.FindByEmailAsync(model.Email);
+            if (user != null && await _userManager.CheckPasswordAsync(user, model.Password))
+            {
+                 var token = await _tokenService.CreateToken(user);
+                 var roles = await _userManager.GetRolesAsync(user);
+
+             return Ok(new
+            {
+                token = token,
+                id = user.Id,
+                email = user.Email,
+                fullName = user.FullName,
+                roles = roles
+            });
     }
 
     return Unauthorized(new { message = "Email ou mot de passe incorrect" });

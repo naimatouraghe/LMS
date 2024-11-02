@@ -8,12 +8,14 @@ import Dashboard from './Pages/Dashboard';
 import Register from './Pages/Register';
 import Login from './Pages/Login';
 // ... existing code ...
-
+import { AuthProvider } from './contexts/AuthContext';
 function App() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     return (
+        
         <Router>
+            <AuthProvider>
             <div className="h-full">
                 {/* Sidebar - Fixed on desktop, hidden on mobile */}
                 <div className="hidden md:flex h-full w-72 flex-col fixed inset-y-0 z-50 bg-gray-900">
@@ -78,7 +80,9 @@ function App() {
                     </div>
                 )}
             </div>
+            </AuthProvider>
         </Router>
+      
     );
 }
 

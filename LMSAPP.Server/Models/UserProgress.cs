@@ -4,11 +4,11 @@ namespace lmsapp.Server.Models
 {
     public class UserProgress
     {
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public Guid Id { get; set; } 
         public string UserId { get; set; }
         public ApplicationUser User { get; set; }
 
-        public string ChapterId { get; set; }
+        public Guid ChapterId { get; set; }
         public Chapter Chapter { get; set; }
 
         public bool IsCompleted { get; set; } = false;

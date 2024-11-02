@@ -79,5 +79,39 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         modelBuilder.Entity<StripeCustomer>()
             .HasIndex(sc => sc.UserId)
             .IsUnique();
+
+    
+        modelBuilder.Entity<Category>().HasData(
+        new Category 
+        { 
+            Id = Guid.Parse("c9d4c053-49b6-410c-bc78-2d54a9991870"), 
+            Name = "English"
+        },
+        new Category 
+        { 
+            Id = Guid.Parse("3d490a70-94ce-4d15-9494-5248280c2ce3"), 
+            Name = "Spanish"
+        },
+        new Category 
+        { 
+            Id = Guid.Parse("c9d4c053-49b6-410c-bc78-2d54a9991871"), 
+            Name = "Italian"
+        },
+        new Category 
+        { 
+            Id = Guid.Parse("c9d4c053-49b6-410c-bc78-2d54a9991872"), 
+            Name = "French"
+        },
+        new Category 
+        { 
+            Id = Guid.Parse("c9d4c053-49b6-410c-bc78-2d54a9991873"), 
+            Name = "Japanese"
+        },
+        new Category 
+        { 
+            Id = Guid.Parse("c9d4c053-49b6-410c-bc78-2d54a9991874"), 
+            Name = "Portuguese"
+        }
+    );
     }
 }

@@ -1,41 +1,32 @@
 import { BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 
-export const CourseCard = ({
-    id,
-    title,
-    imageUrl,
-    category,
-    chapters,
-    price,
-    progress,
-    purchases = [],
-    currentUserId
-}) => {
-    const isPurchased = purchases.some(purchase => purchase.userId === currentUserId);
-    const totalChapters = chapters.length;
-    
-    // Calculer le pourcentage de progression
-    const completedChapters = chapters.filter(chapter => 
-        chapter.userProgress?.some(
-            progress => progress.userId === currentUserId && progress.isCompleted
-        )
-    ).length;
-    
-    const progressPercentage = Math.round((completedChapters / totalChapters) * 100);
-    const isCompleted = progressPercentage === 100;
+export const CourseCard = ({ course }) => {
+
+    if (!course) {
+        return null;
+    }
+    const formatPrice = (price) => {
+        return new Intl.NumberFormat('fr-FR', {
+            style: 'currency',
+            currency: 'EUR'
+        }).format(price);
+    };
 
     return (
         <Link 
-            to={`/courses/${id}`}
+            to={`/courses`}
             className="group relative flex flex-col overflow-hidden rounded-lg border hover:shadow-sm transition"
         >
             {/* Image */}
             <div className="relative aspect-video w-full overflow-hidden">
                 <img
                     className="object-cover w-full h-full"
-                    alt={title}
-                    src={imageUrl || "/default-course-image.jpg"}
+                    alt={course.title}
+                    src={course.imageUrl || "/placeholder-course.jpg"}
+                    onError={(e) => {
+                        e.target.src = "/placeholder-course.jpg";
+                    }}
                 />
             </div>
             
@@ -43,48 +34,33 @@ export const CourseCard = ({
             <div className="flex flex-col flex-grow p-4">
                 {/* Title */}
                 <h3 className="text-lg font-medium text-slate-700 line-clamp-2">
-                    {title}
+                    {course.title}
                 </h3>
                 
+                {/* Description */}
+                <p className="text-sm text-slate-500 mt-1 line-clamp-2">
+                    {course.description}
+                </p>
+                
                 {/* Category */}
-                <p className="text-sm text-slate-500 mt-1">
-                    {category?.name}
+                <p className="text-xs text-slate-400 mt-2">
+                    {course.category?.name}
                 </p>
                 
                 {/* Chapters count */}
                 <div className="flex items-center gap-x-2 text-sm text-slate-500 mt-4">
                     <BookOpen className="h-4 w-4" />
-                    <span>{totalChapters} Chapters</span>
+                    <span>
+                        {course.chapters?.length || 0} 
+                        {course.chapters?.length === 1 ? ' Chapitre' : ' Chapitres'}
+                    </span>
                 </div>
 
-                {/* Progress or Price */}
+                {/* Price */}
                 <div className="mt-auto pt-4">
-                    {isPurchased ? (
-                        <>
-                            {/* Progress bar */}
-                            <div className="h-2 w-full bg-slate-200 rounded-full">
-                                <div 
-                                    className={`h-full rounded-full transition-all ${
-                                        isCompleted ? "bg-emerald-700" : "bg-sky-700"
-                                    }`}
-                                    style={{ width: `${progressPercentage}%` }}
-                                />
-                            </div>
-                            
-                            {/* Progress text */}
-                            <div className="flex items-center justify-between mt-2">
-                                <p className={`text-sm ${
-                                    isCompleted ? "text-emerald-700" : "text-sky-700"
-                                }`}>
-                                    {progressPercentage}% Complete
-                                </p>
-                            </div>
-                        </>
-                    ) : (
-                        <div className="text-lg font-medium text-slate-700">
-                            {price ? `$${price.toFixed(2)}` : "Free"}
-                        </div>
-                    )}
+                    <p className="text-lg font-medium text-slate-700">
+                        {formatPrice(course.price)}
+                    </p>
                 </div>
             </div>
         </Link>

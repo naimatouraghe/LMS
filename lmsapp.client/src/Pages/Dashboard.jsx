@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CourseCard } from "@/components/CourseCard";
 import { Clock, CheckCircle } from "lucide-react";
-import NavbarDekstop from "@/Components/NavbarDekstop";
+import NavbarDesktop from "@/Components/NavbarDesktop";
 const Dashboard = () => {
     const [courses] = useState([
         // Cours complété
@@ -239,7 +239,7 @@ const Dashboard = () => {
     return (
         <>
         <div className="hidden md:block space-y-4">
-        <NavbarDekstop/>
+        <NavbarDesktop/>
         </div>
         <div className="p-1 m-5">
             

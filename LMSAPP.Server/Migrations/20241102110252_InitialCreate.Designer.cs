@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace lmsapp.Server.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20241027141348_InitialCreate")]
+    [Migration("20241102110252_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -35,9 +35,6 @@ namespace lmsapp.Server.Migrations
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("DateJoined")
-                        .HasColumnType("datetime2");
 
                     b.Property<string>("Email")
                         .HasMaxLength(256)
@@ -231,12 +228,12 @@ namespace lmsapp.Server.Migrations
 
             modelBuilder.Entity("lmsapp.Server.Models.Attachment", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("CourseId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -261,12 +258,14 @@ namespace lmsapp.Server.Migrations
 
             modelBuilder.Entity("lmsapp.Server.Models.Category", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
 
@@ -278,12 +277,12 @@ namespace lmsapp.Server.Migrations
 
             modelBuilder.Entity("lmsapp.Server.Models.Chapter", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("CourseId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -319,11 +318,12 @@ namespace lmsapp.Server.Migrations
 
             modelBuilder.Entity("lmsapp.Server.Models.Course", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("CategoryId")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -360,16 +360,16 @@ namespace lmsapp.Server.Migrations
 
             modelBuilder.Entity("lmsapp.Server.Models.MuxData", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("AssetId")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("ChapterId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<Guid>("ChapterId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("PlaybackId")
                         .HasColumnType("nvarchar(max)");
@@ -384,12 +384,12 @@ namespace lmsapp.Server.Migrations
 
             modelBuilder.Entity("lmsapp.Server.Models.Purchase", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("CourseId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -439,12 +439,12 @@ namespace lmsapp.Server.Migrations
 
             modelBuilder.Entity("lmsapp.Server.Models.UserProgress", b =>
                 {
-                    b.Property<string>("Id")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("ChapterId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<Guid>("ChapterId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -546,7 +546,9 @@ namespace lmsapp.Server.Migrations
                 {
                     b.HasOne("lmsapp.Server.Models.Category", "Category")
                         .WithMany("Courses")
-                        .HasForeignKey("CategoryId");
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Category");
                 });
@@ -581,6 +583,17 @@ namespace lmsapp.Server.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("lmsapp.Server.Models.StripeCustomer", b =>
+                {
+                    b.HasOne("LMSAPP.Server.Models.ApplicationUser", "User")
+                        .WithOne("StripeCustomer")
+                        .HasForeignKey("lmsapp.Server.Models.StripeCustomer", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("lmsapp.Server.Models.UserProgress", b =>
                 {
                     b.HasOne("lmsapp.Server.Models.Chapter", "Chapter")
@@ -590,7 +603,7 @@ namespace lmsapp.Server.Migrations
                         .IsRequired();
 
                     b.HasOne("LMSAPP.Server.Models.ApplicationUser", "User")
-                        .WithMany("Progresses")
+                        .WithMany("UserProgress")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -602,9 +615,12 @@ namespace lmsapp.Server.Migrations
 
             modelBuilder.Entity("LMSAPP.Server.Models.ApplicationUser", b =>
                 {
-                    b.Navigation("Progresses");
-
                     b.Navigation("Purchases");
+
+                    b.Navigation("StripeCustomer")
+                        .IsRequired();
+
+                    b.Navigation("UserProgress");
                 });
 
             modelBuilder.Entity("lmsapp.Server.Models.Category", b =>

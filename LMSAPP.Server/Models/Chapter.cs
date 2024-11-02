@@ -2,7 +2,7 @@
 {
     public class Chapter
     {
-        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public Guid Id { get; set; }
         public string Title { get; set; }
         public string? Description { get; set; }
         public string? VideoUrl { get; set; }
@@ -10,7 +10,7 @@
         public bool IsPublished { get; set; } = false;
         public bool IsFree { get; set; } = false;
 
-        public string CourseId { get; set; }
+        public Guid CourseId { get; set; }
         public Course Course { get; set; }
 
         public MuxData? MuxData { get; set; }
