@@ -1,10 +1,14 @@
+using LMSAPP.Server.Data;
 using LMSAPP.Server.Models;
 using LMSAPP.Server.Services;
+using LMSAPP.Server.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Stripe;
 using System.Text;
+using Microsoft.OpenApi.Models;
 
 namespace LMSAPP.Server
 {
@@ -14,101 +18,174 @@ namespace LMSAPP.Server
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
-            builder.Services.AddControllers();
+            // Configuration de Stripe
+            StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
 
-            // Configure Swagger for API documentation
+            // Ajouter les services au conteneur DI
+            builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
+            builder.Services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new OpenApiInfo
+                {
+                    Title = "LMSAPP API",
+                    Version = "v1",
+                    Description = "API pour l'application LMS"
+                });
+
+                // Configuration de l'authentification JWT
+                c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    Description = "JWT Authorization header using the Bearer scheme",
+                    Name = "Authorization",
+                    In = ParameterLocation.Header,
+                    Type = SecuritySchemeType.ApiKey,
+                    Scheme = "Bearer"
+                });
+
+                c.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        Array.Empty<string>()
+                    }
+                });
+            });
 
             // Configure DbContext with SQL Server (or your preferred database)
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
             // Configure Identity
+            // Add services to the container
             builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
             {
-                options.Password.RequireDigit = true;
-                options.Password.RequireLowercase = true;
-                options.Password.RequireUppercase = true;
-                options.Password.RequireNonAlphanumeric = true;
                 options.Password.RequiredLength = 6;
+                options.Password.RequireDigit = true;
+                options.Password.RequireUppercase = true;
+                options.Password.RequireLowercase = true;
+                options.Password.RequireNonAlphanumeric = false;
+
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+                options.Lockout.MaxFailedAccessAttempts = 5;
+
                 options.User.RequireUniqueEmail = true;
             })
             .AddEntityFrameworkStores<ApplicationDbContext>()
+            .AddSignInManager()
             .AddDefaultTokenProviders();
 
+            // Register services
+            builder.Services.AddScoped<IAuthService, AuthService>();
+            builder.Services.AddScoped<ICourseService, CourseService>();
+            builder.Services.AddScoped<IPaymentService, PaymentService>();
+            builder.Services.AddScoped<IProgressService, ProgressService>();
+            builder.Services.AddScoped<ITokenService, Services.TokenService>();
             // Configure JWT Authentication
             var key = builder.Configuration["Jwt:Key"];
             var issuer = builder.Configuration["Jwt:Issuer"];
             var audience = builder.Configuration["Jwt:Audience"];
 
-      var jwtSettings = builder.Configuration.GetSection("JWT");
-if (string.IsNullOrEmpty(jwtSettings["Secret"]))
-{
-    throw new InvalidOperationException("JWT Secret key is not configured in appsettings.json");
-}
+            var jwtSettings = builder.Configuration.GetSection("JWT");
+            if (string.IsNullOrEmpty(jwtSettings["Secret"]))
+            {
+                throw new InvalidOperationException("JWT Secret key is not configured in appsettings.json");
+            }
 
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings["ValidIssuer"],
-        ValidAudience = jwtSettings["ValidAudience"],
-        IssuerSigningKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(jwtSettings["Secret"])
-        )
-    };
-});
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = jwtSettings["ValidIssuer"],
+                    ValidAudience = jwtSettings["ValidAudience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(
+                        Encoding.UTF8.GetBytes(jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT Secret is null"))
+                    )
+                };
+            });
 
             // Add authorization policies for roles
             builder.Services.AddAuthorization(options =>
             {
-                options.AddPolicy("RequireAdminRole", policy => policy.RequireRole("Admin"));
-                options.AddPolicy("RequireTeacherRole", policy => policy.RequireRole("Teacher"));
-                options.AddPolicy("RequireStudentRole", policy => policy.RequireRole("Student"));
+                options.AddPolicy("StudentPolicy", policy =>
+                    policy.RequireRole("Student", "Teacher", "Admin"));
+
+                // Politique pour les enseignants (uniquement Teacher)
+                options.AddPolicy("TeacherPolicy", policy =>
+                    policy.RequireRole("Teacher"));
+
+                // Politique pour les administrateurs
+                options.AddPolicy("AdminPolicy", policy =>
+                    policy.RequireRole("Admin"));
             });
-            builder.Services.AddScoped<ITokenService, TokenService>();
+
+
+
+
+
             builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll",
-        builder =>
-        {
-            builder
-                .WithOrigins("https://localhost:5173") // URL de votre frontend
-                .AllowAnyMethod()
-                .AllowAnyHeader()
-                .AllowCredentials();
-        });
-});
+                {
+                    options.AddPolicy("AllowAll",
+                        builder =>
+                        {
+                            builder
+                                .WithOrigins("https://localhost:5173") // URL de votre frontend
+                                .AllowAnyMethod()
+                                .AllowAnyHeader()
+                                .AllowCredentials();
+                        });
+                });
+
             var app = builder.Build();
 
-            app.UseDefaultFiles();
-            app.UseStaticFiles();
-
-            // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
+                app.UseDeveloperExceptionPage();
                 app.UseSwagger();
-                app.UseSwaggerUI();
+                app.UseSwaggerUI(c =>
+                {
+                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "LMSAPP API v1");
+                    c.RoutePrefix = "swagger";
+                });
             }
 
+            // Middleware CSP
+            app.Use(async (context, next) =>
+            {
+                context.Response.Headers.Append(
+                    "Content-Security-Policy",
+                    "default-src 'self'; " +
+                    "img-src 'self' data: https:; " +
+                    "font-src 'self' https: data:; " +
+                    "style-src 'self' 'unsafe-inline'; " +
+                    "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+                    "connect-src 'self' ws: wss: http: https:;"
+                );
+                await next();
+            });
+
             app.UseHttpsRedirection();
-
-            app.UseAuthentication(); 
-            app.UseCors("AllowAll");// Add this line for authentication
-            app.UseAuthorization();   // Make sure authorization is enabled
-
-            app.MapControllers(); // Maps the controller endpoints
+            app.UseRouting();
+            app.UseCors("AllowSpecificOrigin");
+            app.UseAuthentication();
+            app.UseAuthorization();
+            app.MapControllers();
 
             app.MapFallbackToFile("/index.html"); // For client-side routing (if applicable)
 

@@ -1,13 +1,24 @@
-﻿namespace lmsapp.Server.Models
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace LMSAPP.Server.Models
 {
     public class MuxData
     {
-        public Guid Id { get; set; } 
-        public string AssetId { get; set; }
+        [Key]
+        public Guid Id { get; set; }
+
+        [Required(ErrorMessage = "Asset ID is required")]
+        [StringLength(100, ErrorMessage = "Asset ID cannot exceed 100 characters")]
+        public required string AssetId { get; set; }
+
+        [StringLength(100, ErrorMessage = "Playback ID cannot exceed 100 characters")]
         public string? PlaybackId { get; set; }
 
+        [Required(ErrorMessage = "Chapter ID is required")]
         public Guid ChapterId { get; set; }
-        public Chapter Chapter { get; set; }
-    }
 
+        [ForeignKey("ChapterId")]
+        public required Chapter Chapter { get; set; }
+    }
 }

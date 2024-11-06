@@ -1,10 +1,10 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace lmsapp.Server.Models
+namespace LMSAPP.Server.Models
 {
     public class Category
     {
-        public Guid Id { get; set; }  // Utiliser Guid au lieu de string
+        public Guid Id { get; set; }
 
         [Required]
         [StringLength(100)]

@@ -1,7 +1,8 @@
-﻿using LMSAPP.Server.Models;
-using LMSAPP.Server.Services;
-using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+using LMSAPP.Server.Services.Interfaces;
+using LMSAPP.Server.DTOs.Auth;
 
 namespace LMSAPP.Server.Controllers
 {
@@ -9,66 +10,73 @@ namespace LMSAPP.Server.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly ITokenService _tokenService;
+        private readonly IAuthService _authService;
 
-        public AuthController(UserManager<ApplicationUser> userManager, ITokenService tokenService)
+        public AuthController(IAuthService authService)
         {
-            _userManager = userManager;
-            _tokenService = tokenService;
+            _authService = authService;
         }
 
         [HttpPost("register")]
-        public async Task<IActionResult> Register(RegisterModel model)
+        public async Task<IResult> Register([FromBody] RegisterDto model)
         {
-            var user = new ApplicationUser { UserName = model.Email, Email = model.Email, FullName = model.FullName };
-            var result = await _userManager.CreateAsync(user, model.Password);
-
-            if (result.Succeeded)
-            {
-                await _userManager.AddToRoleAsync(user, model.Role);
-                return Ok("User registered successfully!");
-            }
-
-            return BadRequest(result.Errors);
+            return await _authService.CreateUserAsync(model);
         }
 
+
         [HttpPost("login")]
-        public async Task<IActionResult> Login(LoginModel model)
+        public async Task<IResult> Login([FromBody] LoginDto model)
         {
-            var user = await _userManager.FindByEmailAsync(model.Email);
-            
-            if (user == null)
-            {
-                return Unauthorized(new { message = "Email ou mot de passe incorrect" });
-            }
+            return await _authService.LoginAsync(model);
+        }
 
-            // Vérifier si le compte est désactivé
-            if (user.LockoutEnabled && user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow)
-            {
-                return Unauthorized(new { message = "Ce compte a été désactivé. Veuillez contacter l'administrateur." });
-            }
+        [Authorize]
+        [HttpPost("logout")]
+        public async Task<IResult> Logout()
+        {
+            return await _authService.LogoutAsync();
+        }
 
-            if (await _userManager.CheckPasswordAsync(user, model.Password))
-            {
-                var token = await _tokenService.CreateToken(user);
-                var roles = await _userManager.GetRolesAsync(user);
+        [Authorize(Roles = "Admin")]
+        [HttpGet("users")]
+        public async Task<IResult> GetUsers([FromQuery] string? role, [FromQuery] string? searchTerm)
+        {
+            return await _authService.GetAllUsersAsync(role, searchTerm);
+        }
 
-                return Ok(new
-                {
-                    token = token,
-                    user = new
-                    {
-                        id = user.Id,
-                        email = user.Email,
-                        fullName = user.FullName,
-                        avatarPath = user.AvatarPath,
-                        roles = roles
-                    }
-                });
-            }
+        [Authorize]
+        [HttpGet("users/{userId}")]
+        public async Task<IResult> GetUser(string userId)
+        {
+            return await _authService.GetUserAsync(userId);
+        }
 
-            return Unauthorized(new { message = "Email ou mot de passe incorrect" });
+        [Authorize(Roles = "Admin")]
+        [HttpPut("users/{userId}")]
+        public async Task<IResult> UpdateUser(string userId, [FromBody] RegisterDto model)
+        {
+            return await _authService.UpdateUserAsync(userId, model);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpDelete("users/{userId}")]
+        public async Task<IResult> DeleteUser(string userId)
+        {
+            return await _authService.DeleteUserAsync(userId);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost("users/{userId}/role")]
+        public async Task<IResult> AssignRole(string userId, [FromBody] string role)
+        {
+            return await _authService.AssignRoleAsync(userId, role);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("statistics")]
+        public async Task<IResult> GetUserStatistics()
+        {
+            return await _authService.GetUserStatisticsAsync();
         }
     }
 }

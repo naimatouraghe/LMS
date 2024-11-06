@@ -1,6 +1,6 @@
 ﻿using LMSAPP.Server.Models;
 
-namespace LMSAPP.Server.Services
+namespace LMSAPP.Server.Services.Interfaces
 {
     public interface ITokenService
     {

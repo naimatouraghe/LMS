@@ -1,9 +1,8 @@
-using lmsapp.Server.Models;
-using LMSAPP.Server.DTOs;
-using LMSAPP.Server.DTOs.Extensions;
-using LMSAPP.Server.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using LMSAPP.Server.DTOs;
+using LMSAPP.Server.Services.Interfaces;
 
 namespace LMSAPP.Server.Controllers
 {
@@ -11,294 +10,175 @@ namespace LMSAPP.Server.Controllers
     [Route("api/[controller]")]
     public class CourseController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ICourseService _courseService;
 
-        public CourseController(ApplicationDbContext context)
+        public CourseController(ICourseService courseService)
         {
-            _context = context;
+            _courseService = courseService;
         }
 
-        // GET: api/Course
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<CourseDto>>> GetCourses()
-        {
-            var courses = await _context.Courses
-                .Include(c => c.Category)
-                .Select(c => c.ToDto())
-                .ToListAsync();
-
-            return Ok(courses);
-        }
-
-        // GET: api/Course/{id}
-        [HttpGet("{id}")]
-        public async Task<ActionResult<CourseDto>> GetCourse(string id)
-        {
-            if (!Guid.TryParse(id, out Guid courseId))
-            {
-                return BadRequest("Invalid ID format");
-            }
-
-            var course = await _context.Courses
-                .Include(c => c.Category)
-                .FirstOrDefaultAsync(c => c.Id == courseId);
-
-            if (course == null)
-            {
-                return NotFound();
-            }
-
-            return course.ToDto();
-        }
-
-        // POST: api/Course
         [HttpPost]
-        public async Task<ActionResult<CourseDto>> CreateCourse([FromBody] CourseDto courseDto)
+        [Authorize(Roles = "Teacher")]
+        public async Task<IResult> CreateCourse([FromBody] CourseDto courseDto)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
-            if (!Guid.TryParse(courseDto.CategoryId, out Guid categoryGuid))
-            {
-                return BadRequest("Invalid CategoryId format");
-            }
-
-            var course = new Course
-            {
-                Id = Guid.NewGuid(),
-                Title = courseDto.Title,
-                Description = courseDto.Description,
-                ImageUrl = courseDto.ImageUrl,
-                Price = courseDto.Price,
-                CategoryId = categoryGuid,
-                UserId = courseDto.UserId,
-                IsPublished = false,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-
-            _context.Courses.Add(course);
-            await _context.SaveChangesAsync();
-
-            await _context.Entry(course)
-                .Reference(c => c.Category)
-                .LoadAsync();
-
-            var resultDto = course.ToDto();
-
-            return CreatedAtAction(
-                nameof(GetCourse),
-                new { id = resultDto.Id },
-                resultDto
-            );
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? throw new UnauthorizedAccessException("User not authenticated");
+            return await _courseService.CreateCourseAsync(courseDto, userId);
         }
 
-        // PUT: api/Course/{id}
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateCourse(string id, CourseDto courseDto)
+        [HttpGet]
+        public async Task<IResult> GetCourses([FromQuery] string? searchTerm, [FromQuery] string? category)
         {
-            if (!Guid.TryParse(id, out Guid courseId))
-            {
-                return BadRequest("Invalid ID format");
-            }
-
-            if (!Guid.TryParse(courseDto.CategoryId, out Guid categoryGuid))
-            {
-                return BadRequest("Invalid CategoryId format");
-            }
-
-            var course = await _context.Courses.FindAsync(courseId);
-
-            if (course == null)
-            {
-                return NotFound();
-            }
-
-            course.Title = courseDto.Title;
-            course.Description = courseDto.Description;
-            course.ImageUrl = courseDto.ImageUrl;
-            course.Price = courseDto.Price;
-            course.CategoryId = categoryGuid;
-            course.IsPublished = courseDto.IsPublished;
-            course.UpdatedAt = DateTime.UtcNow;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!CourseExists(courseId))
-                {
-                    return NotFound();
-                }
-                throw;
-            }
-
-            return NoContent();
+            return await _courseService.GetAllCoursesAsync(searchTerm, category);
         }
 
-        // DELETE: api/Course/{id}
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteCourse(string id)
+        [HttpGet("{courseId}")]
+        public async Task<IResult> GetCourse(Guid courseId)
         {
-            if (!Guid.TryParse(id, out Guid courseId))
-            {
-                return BadRequest("Invalid ID format");
-            }
-
-            var course = await _context.Courses.FindAsync(courseId);
-            if (course == null)
-            {
-                return NotFound();
-            }
-
-            _context.Courses.Remove(course);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-        }
-        [HttpGet("filter")]
-        public async Task<ActionResult<IEnumerable<CourseDto>>> GetFilteredCourses(
-    [FromQuery] string? category,
-    [FromQuery] string? price,
-    [FromQuery] string? level,
-    [FromQuery] string? search,
-    [FromQuery] string? sort)
-        {
-            var query = _context.Courses.AsQueryable();
-
-            // Apply category filter
-            if (!string.IsNullOrEmpty(category))
-            {
-                query = query.Where(c => c.Category.Name == category);
-            }
-
-            // Apply price filter
-            if (!string.IsNullOrEmpty(price))
-            {
-                switch (price)
-                {
-                    case "<30":
-                        query = query.Where(c => c.Price < 30);
-                        break;
-                    case "30-50":
-                        query = query.Where(c => c.Price >= 30 && c.Price < 50);
-                        break;
-                    case "50-70":
-                        query = query.Where(c => c.Price >= 50 && c.Price < 70);
-                        break;
-                    case "70-90":
-                        query = query.Where(c => c.Price >= 70 && c.Price < 90);
-                        break;
-                    case ">90":
-                        query = query.Where(c => c.Price >= 90);
-                        break;
-                }
-            }
-
-
-
-// Apply level filter
-if (!string.IsNullOrEmpty(level) && !level.Equals("all", StringComparison.OrdinalIgnoreCase))
-{
-    if (Enum.TryParse<LanguageLevel>(level, true, out var languageLevel))
-    {
-        query = query.Where(c => c.Level == languageLevel);
-    }
-}
-
-            // Apply search
-            if (!string.IsNullOrEmpty(search))
-            {
-                query = query.Where(c =>
-                    c.Title.Contains(search) ||
-                    (c.Description != null && c.Description.Contains(search))
-                );
-            }
-
-            // Apply sorting
-            if (!string.IsNullOrEmpty(sort))
-            {
-                query = sort switch
-                {
-                    "recent" => query.OrderByDescending(c => c.CreatedAt),
-                    "oldest" => query.OrderBy(c => c.CreatedAt),
-                    "price-asc" => query.OrderBy(c => c.Price),
-                    "price-desc" => query.OrderByDescending(c => c.Price),
-                    _ => query.OrderByDescending(c => c.CreatedAt)
-                };
-            }
-
-            var courses = await query
-                .Include(c => c.Category)
-                .Where(c => c.IsPublished)
-                .Select(c => new CourseDto
-                {
-                    Id = c.Id.ToString(),                    // Convert Guid to string
-                    UserId = c.UserId.ToString(),            // Convert Guid to string
-                    Title = c.Title,
-                    Description = c.Description,
-                    ImageUrl = c.ImageUrl,
-                    Price = c.Price,
-                    IsPublished = c.IsPublished,
-                    CategoryId = c.CategoryId.ToString(),     // Convert Guid to string
-                    Level = c.Level,
-                    Category = new CategoryDto
-                    {
-                        Id = c.Category.Id.ToString(),       // Convert Guid to string
-                        Name = c.Category.Name
-                    },
-                    CreatedAt = c.CreatedAt,
-                    UpdatedAt = c.UpdatedAt
-                })
-                .ToListAsync();
-
-            return Ok(courses);
+            return await _courseService.GetCourseAsync(courseId);
         }
 
-
-
-[HttpGet("search")]
-public async Task<ActionResult<IEnumerable<CourseDto>>> SearchCourses([FromQuery] string query)
-{
-    if (string.IsNullOrWhiteSpace(query))
-    {
-        return Ok(Array.Empty<CourseDto>());
-    }
-
-    var courses = await _context.Courses
-        .Include(c => c.Category)
-        .Where(c => 
-            c.IsPublished && 
-            (c.Title.Contains(query) || 
-            (c.Description != null && c.Description.Contains(query)))
-        )
-        .Take(10) // Limit results
-        .Select(c => new CourseDto
+        [HttpPut("{courseId}")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IResult> UpdateCourse(Guid courseId, [FromBody] CourseDto courseDto)
         {
-            Id = c.Id.ToString(),
-            Title = c.Title,
-            Description = c.Description,
-            ImageUrl = c.ImageUrl,
-            Price = c.Price,
-            CategoryId = c.CategoryId.ToString(),
-            Category = new CategoryDto
-            {
-                Id = c.Category.Id.ToString(),
-                Name = c.Category.Name
-            }
-        })
-        .ToListAsync();
+            return await _courseService.UpdateCourseAsync(courseId, courseDto);
+        }
 
-    return Ok(courses);
-}
-
-        private bool CourseExists(Guid id)
+        [HttpDelete("{courseId}")]
+        [Authorize(Roles = "Teacher,Admin")]
+        public async Task<IResult> DeleteCourse(Guid courseId)
         {
-            return _context.Courses.Any(e => e.Id == id);
+            return await _courseService.DeleteCourseAsync(courseId);
+        }
+
+        [HttpGet("user/{userId}")]
+        [Authorize]
+        public async Task<IResult> GetUserCourses(string userId)
+        {
+            return await _courseService.GetUserCoursesAsync(userId);
+        }
+
+        // Chapter Management
+        [HttpPost("{courseId}/chapters")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IResult> AddChapter(Guid courseId, [FromBody] ChapterDto chapterDto)
+        {
+            return await _courseService.AddChapterAsync(courseId, chapterDto);
+        }
+
+        [HttpPut("chapters/{chapterId}")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IResult> UpdateChapter(Guid chapterId, [FromBody] ChapterDto chapterDto)
+        {
+            return await _courseService.UpdateChapterAsync(chapterId, chapterDto);
+        }
+
+        [HttpDelete("chapters/{chapterId}")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IResult> DeleteChapter(Guid chapterId)
+        {
+            return await _courseService.DeleteChapterAsync(chapterId);
+        }
+
+        [HttpPut("{courseId}/chapters/reorder")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IResult> ReorderChapters(Guid courseId, [FromBody] List<Guid> chapterIds)
+        {
+            return await _courseService.ReorderChaptersAsync(courseId, chapterIds);
+        }
+
+        [HttpGet("{courseId}/chapters")]
+        public async Task<IResult> GetCourseChapters(Guid courseId)
+        {
+            return await _courseService.GetCourseChaptersAsync(courseId);
+        }
+
+        // Attachments
+        [HttpPost("{courseId}/attachments")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IResult> AddAttachment(Guid courseId, IFormFile file)
+        {
+            return await _courseService.AddAttachmentAsync(courseId, file);
+        }
+
+        [HttpDelete("attachments/{attachmentId}")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IResult> DeleteAttachment(Guid attachmentId)
+        {
+            return await _courseService.DeleteAttachmentAsync(attachmentId);
+        }
+
+        [HttpGet("{courseId}/attachments")]
+        public async Task<IResult> GetCourseAttachments(Guid courseId)
+        {
+            return await _courseService.GetCourseAttachmentsAsync(courseId);
+        }
+
+        // Categories
+        [HttpGet("categories")]
+        public async Task<IResult> GetCategories()
+        {
+            return await _courseService.GetCategoriesAsync();
+        }
+
+        [HttpPost("categories")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IResult> CreateCategory([FromBody] CategoryDto categoryDto)
+        {
+            return await _courseService.CreateCategoryAsync(categoryDto);
+        }
+
+        [HttpPut("categories/{categoryId}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IResult> UpdateCategory(Guid categoryId, [FromBody] CategoryDto categoryDto)
+        {
+            return await _courseService.UpdateCategoryAsync(categoryId, categoryDto);
+        }
+
+        [HttpDelete("categories/{categoryId}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IResult> DeleteCategory(Guid categoryId)
+        {
+            return await _courseService.DeleteCategoryAsync(categoryId);
+        }
+
+        // Analytics and Progress
+        [HttpGet("analytics/teacher")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IResult> GetTeacherAnalytics()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? throw new UnauthorizedAccessException("User not authenticated");
+            return await _courseService.GetTeacherAnalyticsAsync(userId);
+        }
+
+        [HttpGet("purchased")]
+        [Authorize]
+        public async Task<IResult> GetPurchasedCourses()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? throw new UnauthorizedAccessException("User not authenticated");
+            return await _courseService.GetPurchasedCoursesAsync(userId);
+        }
+
+        [HttpGet("{courseId}/progress")]
+        [Authorize]
+        public async Task<IResult> GetCourseProgress(Guid courseId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? throw new UnauthorizedAccessException("User not authenticated");
+            return await _courseService.GetCourseProgressAsync(userId, courseId);
+        }
+
+        [HttpGet("{courseId}/purchased")]
+        [Authorize]
+        public async Task<IResult> HasUserPurchasedCourse(Guid courseId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? throw new UnauthorizedAccessException("User not authenticated");
+            var result = await _courseService.HasUserPurchasedCourseAsync(userId, courseId);
+            return Results.Ok(result);
         }
     }
 }

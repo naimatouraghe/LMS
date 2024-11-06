@@ -1,8 +1,8 @@
-﻿using lmsapp.Server.Models;
+﻿namespace LMSAPP.Server.Data;
+
 using LMSAPP.Server.Models;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Attachment = lmsapp.Server.Models.Attachment;
 
 public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 {
@@ -76,40 +76,69 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .HasIndex(up => new { up.UserId, up.ChapterId })
             .IsUnique();
 
-        modelBuilder.Entity<StripeCustomer>()
-            .HasIndex(sc => sc.UserId)
-            .IsUnique();
+        modelBuilder.Entity<StripeCustomer>(entity =>
+        {
+            entity.HasKey(e => e.Id);
 
-    
+            entity.HasOne(sc => sc.User)
+                .WithOne()
+                .HasForeignKey<StripeCustomer>(sc => sc.UserId);
+
+            entity.HasIndex(sc => sc.UserId)
+                .IsUnique();
+
+            entity.HasIndex(sc => sc.StripeCustomerId)
+                .IsUnique();
+        });
+
+        // Modifier les relations pour éviter les cycles de cascade
+        modelBuilder.Entity<Course>()
+            .HasOne(c => c.Teacher)
+            .WithMany()
+            .HasForeignKey(c => c.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Purchase>()
+            .HasOne(p => p.User)
+            .WithMany(u => u.Purchases)
+            .HasForeignKey(p => p.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<UserProgress>()
+            .HasOne(up => up.User)
+            .WithMany(u => u.UserProgress)
+            .HasForeignKey(up => up.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         modelBuilder.Entity<Category>().HasData(
-        new Category 
-        { 
-            Id = Guid.Parse("c9d4c053-49b6-410c-bc78-2d54a9991870"), 
+        new Category
+        {
+            Id = Guid.Parse("c9d4c053-49b6-410c-bc78-2d54a9991870"),
             Name = "English"
         },
-        new Category 
-        { 
-            Id = Guid.Parse("3d490a70-94ce-4d15-9494-5248280c2ce3"), 
+        new Category
+        {
+            Id = Guid.Parse("3d490a70-94ce-4d15-9494-5248280c2ce3"),
             Name = "Spanish"
         },
-        new Category 
-        { 
-            Id = Guid.Parse("c9d4c053-49b6-410c-bc78-2d54a9991871"), 
+        new Category
+        {
+            Id = Guid.Parse("c9d4c053-49b6-410c-bc78-2d54a9991871"),
             Name = "Italian"
         },
-        new Category 
-        { 
-            Id = Guid.Parse("c9d4c053-49b6-410c-bc78-2d54a9991872"), 
+        new Category
+        {
+            Id = Guid.Parse("c9d4c053-49b6-410c-bc78-2d54a9991872"),
             Name = "French"
         },
-        new Category 
-        { 
-            Id = Guid.Parse("c9d4c053-49b6-410c-bc78-2d54a9991873"), 
+        new Category
+        {
+            Id = Guid.Parse("c9d4c053-49b6-410c-bc78-2d54a9991873"),
             Name = "Japanese"
         },
-        new Category 
-        { 
-            Id = Guid.Parse("c9d4c053-49b6-410c-bc78-2d54a9991874"), 
+        new Category
+        {
+            Id = Guid.Parse("c9d4c053-49b6-410c-bc78-2d54a9991874"),
             Name = "Portuguese"
         }
     );

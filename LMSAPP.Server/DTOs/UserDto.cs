@@ -1,8 +1,14 @@
+using LMSAPP.Server.DTOs;
+
 public class UserDto
 {
-    public string Id { get; set; }
-    public string Email { get; set; }
-    public string FullName { get; set; }
-     public IFormFile? Avatar { get; set; }  // Ajout de la propriété Avatar
-    public string? AvatarPath { get; set; } // Pour stocker le chemin de l'avatar
+    public required string Id { get; set; }
+    public required string FullName { get; set; }
+    public required string Email { get; set; }
+    public IFormFile? Avatar { get; set; }
+    public string? AvatarPath { get; set; }
+    public required ICollection<PurchaseDto> Purchases { get; set; }
+    public required ICollection<UserProgressDto> UserProgress { get; set; }
+    public StripeCustomerDto? StripeCustomer { get; set; }
 }
+

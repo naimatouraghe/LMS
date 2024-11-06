@@ -2,7 +2,8 @@ namespace LMSAPP.Server.DTOs
 {
     public class CategoryDto
     {
-        public string Id { get; set; }
-        public string Name { get; set; }
+        public Guid Id { get; set; }
+        public required string Name { get; set; }
+        public required ICollection<CourseDto> Courses { get; set; }
     }
 }
