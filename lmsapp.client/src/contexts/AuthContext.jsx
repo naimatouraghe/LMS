@@ -96,6 +96,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateUser = (updatedUser) => {
+    setUser(updatedUser);
+  };
+
   useEffect(() => {
     fetchUserInfo();
   }, []);
@@ -117,6 +121,7 @@ export const AuthProvider = ({ children }) => {
         user,
         isLoading,
         refreshUser: fetchUserInfo,
+        updateUser,
       }}
     >
       {children}

@@ -19,6 +19,8 @@ namespace LMSAPP.Server.Services
         private readonly ILogger<AuthService> _logger;
         private readonly ApplicationDbContext _context;
         private readonly IConfiguration _configuration;
+        private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IWebHostEnvironment _webHostEnvironment;
 
         public AuthService(
             UserManager<ApplicationUser> userManager,
@@ -26,7 +28,9 @@ namespace LMSAPP.Server.Services
             ITokenService tokenService,
             ILogger<AuthService> logger,
             ApplicationDbContext context,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IHttpContextAccessor httpContextAccessor,
+            IWebHostEnvironment webHostEnvironment)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -34,6 +38,8 @@ namespace LMSAPP.Server.Services
             _logger = logger;
             _context = context;
             _configuration = configuration;
+            _httpContextAccessor = httpContextAccessor;
+            _webHostEnvironment = webHostEnvironment;
         }
 
         public async Task<IResult> CreateUserAsync(RegisterDto model)
@@ -93,41 +99,88 @@ namespace LMSAPP.Server.Services
             }
         }
 
-        public async Task<IResult> UpdateUserAsync(string userId, RegisterDto model)
+        public async Task<IResult> UpdateUserAsync(string userId, UpdateUserDto model)
         {
             try
             {
+                _logger.LogInformation($"Début de la mise à jour pour l'utilisateur {userId}");
+
                 var user = await _userManager.FindByIdAsync(userId);
                 if (user == null)
                 {
-                    return Results.NotFound("User not found");
+                    _logger.LogWarning($"Utilisateur {userId} non trouvé");
+                    return Results.NotFound(new { message = "Utilisateur non trouvé" });
                 }
 
+                // Mise à jour des informations de base
                 user.FullName = model.FullName;
                 user.Email = model.Email;
                 user.UserName = model.Email;
 
-                var result = await _userManager.UpdateAsync(user);
-                if (!result.Succeeded)
+                if (model.Avatar != null)
                 {
-                    return Results.BadRequest(result.Errors);
-                }
-
-                if (!string.IsNullOrEmpty(model.Password))
-                {
-                    var passwordResult = await _userManager.RemovePasswordAsync(user);
-                    if (passwordResult.Succeeded)
+                    _logger.LogInformation("Traitement de l'avatar");
+                    try
                     {
-                        await _userManager.AddPasswordAsync(user, model.Password);
+                        // Supprimer l'ancien avatar
+                        if (!string.IsNullOrEmpty(user.AvatarPath))
+                        {
+                            var oldAvatarPath = Path.Combine(_webHostEnvironment.WebRootPath, user.AvatarPath.TrimStart('/'));
+                            _logger.LogInformation($"Tentative de suppression de l'ancien avatar: {oldAvatarPath}");
+
+                            if (File.Exists(oldAvatarPath))
+                            {
+                                File.Delete(oldAvatarPath);
+                                _logger.LogInformation("Ancien avatar supprimé avec succès");
+                            }
+                        }
+
+                        // Sauvegarder le nouvel avatar
+                        user.AvatarPath = await SaveAvatarAsync(model.Avatar);
+                        _logger.LogInformation($"Nouvel avatar sauvegardé: {user.AvatarPath}");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Erreur détaillée lors du traitement de l'avatar");
+                        return Results.BadRequest(new { message = ex.Message });
                     }
                 }
 
-                return Results.Ok(new { Message = "User updated successfully" });
+                var result = await _userManager.UpdateAsync(user);
+                if (!result.Succeeded)
+                {
+                    _logger.LogError("Échec de la mise à jour de l'utilisateur: {Errors}",
+                        string.Join(", ", result.Errors.Select(e => e.Description)));
+                    return Results.BadRequest(new
+                    {
+                        message = "Échec de la mise à jour",
+                        errors = result.Errors.Select(e => e.Description)
+                    });
+                }
+
+                var roles = await _userManager.GetRolesAsync(user);
+
+                var response = new
+                {
+                    message = "Profil mis à jour avec succès",
+                    value = new
+                    {
+                        id = user.Id,
+                        email = user.Email,
+                        fullName = user.FullName,
+                        avatarPath = user.AvatarPath,
+                        isActive = user.IsActive,
+                        roles = roles.ToList()
+                    }
+                };
+
+                _logger.LogInformation("Mise à jour réussie: {@Response}", response);
+                return Results.Ok(response);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating user");
-                return Results.Problem("An error occurred while updating the user");
+                _logger.LogError(ex, "Erreur non gérée lors de la mise à jour de l'utilisateur");
+                return Results.Problem($"Une erreur est survenue lors de la mise à jour: {ex.Message}");
             }
         }
 
@@ -328,6 +381,86 @@ namespace LMSAPP.Server.Services
             {
                 _logger.LogError(ex, "Error getting user statistics");
                 return Results.Problem("An error occurred while getting user statistics");
+            }
+        }
+
+        public async Task<IResult> DeactivateUserAsync(string userId)
+        {
+            try
+            {
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null)
+                {
+                    return Results.NotFound("User not found");
+                }
+
+                user.IsActive = false;
+                var result = await _userManager.UpdateAsync(user);
+
+                if (!result.Succeeded)
+                {
+                    return Results.BadRequest(result.Errors);
+                }
+
+                return Results.Ok(new { Message = "User deactivated successfully" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deactivating user");
+                return Results.Problem("An error occurred while deactivating the user");
+            }
+        }
+
+        // Méthode pour sauvegarder l'avatar
+        private async Task<string> SaveAvatarAsync(IFormFile avatar)
+        {
+            try
+            {
+                _logger.LogInformation("Début de la sauvegarde de l'avatar");
+
+                if (avatar == null)
+                {
+                    _logger.LogError("Avatar est null");
+                    throw new ArgumentException("Aucun fichier n'a été fourni");
+                }
+
+                // Vérifier si WebRootPath existe
+                if (string.IsNullOrEmpty(_webHostEnvironment.WebRootPath))
+                {
+                    _webHostEnvironment.WebRootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                    _logger.LogInformation($"WebRootPath défini à: {_webHostEnvironment.WebRootPath}");
+                }
+
+                var uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "avatars");
+
+                // Créer les dossiers s'ils n'existent pas
+                if (!Directory.Exists(uploadsFolder))
+                {
+                    _logger.LogInformation($"Création du dossier: {uploadsFolder}");
+                    Directory.CreateDirectory(uploadsFolder);
+                }
+
+                // Générer un nom de fichier unique
+                var uniqueFileName = $"{Guid.NewGuid()}{Path.GetExtension(avatar.FileName)}";
+                var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+                _logger.LogInformation($"Sauvegarde du fichier vers: {filePath}");
+
+                // Sauvegarder le fichier
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                {
+                    await avatar.CopyToAsync(fileStream);
+                }
+
+                var relativePath = $"/uploads/avatars/{uniqueFileName}";
+                _logger.LogInformation($"Fichier sauvegardé avec succès. Chemin relatif: {relativePath}");
+
+                return relativePath;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la sauvegarde de l'avatar");
+                throw new Exception($"Erreur lors de la sauvegarde de l'avatar: {ex.Message}");
             }
         }
     }

@@ -7,6 +7,7 @@ public class UserDto
     public required string Email { get; set; }
     public IFormFile? Avatar { get; set; }
     public string? AvatarPath { get; set; }
+    public bool IsActive { get; set; } = true;
     public required ICollection<PurchaseDto> Purchases { get; set; }
     public required ICollection<UserProgressDto> UserProgress { get; set; }
     public StripeCustomerDto? StripeCustomer { get; set; }

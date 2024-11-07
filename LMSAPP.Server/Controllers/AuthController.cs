@@ -13,10 +13,14 @@ namespace LMSAPP.Server.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly ILogger<AuthController> _logger;
 
-        public AuthController(IAuthService authService)
+        public AuthController(
+            IAuthService authService,
+            ILogger<AuthController> logger)
         {
             _authService = authService;
+            _logger = logger;
         }
 
         [HttpPost("register")]
@@ -24,7 +28,6 @@ namespace LMSAPP.Server.Controllers
         {
             return await _authService.CreateUserAsync(model);
         }
-
 
         [HttpPost("login")]
         public async Task<IResult> Login([FromBody] LoginDto model)
@@ -53,11 +56,39 @@ namespace LMSAPP.Server.Controllers
             return await _authService.GetUserAsync(userId);
         }
 
-        [Authorize(Roles = "Admin")]
+        [Authorize]
         [HttpPut("users/{userId}")]
-        public async Task<IResult> UpdateUser(string userId, [FromBody] RegisterDto model)
+        public async Task<IResult> UpdateUser(string userId, [FromForm] UpdateUserDto model)
         {
-            return await _authService.UpdateUserAsync(userId, model);
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return Results.BadRequest(ModelState);
+                }
+
+                var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var isAdmin = User.IsInRole("Admin");
+
+                // Vérifier si l'utilisateur est autorisé à faire la mise à jour
+                if (currentUserId != userId && !isAdmin)
+                {
+                    return Results.Forbid();
+                }
+
+                // Si l'utilisateur n'est pas admin et essaie de modifier le rôle
+                if (!isAdmin && !string.IsNullOrEmpty(model.Role))
+                {
+                    return Results.Forbid();
+                }
+
+                return await _authService.UpdateUserAsync(userId, model);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de la mise à jour de l'utilisateur");
+                return Results.Problem("Une erreur est survenue lors de la mise à jour");
+            }
         }
 
         [Authorize(Roles = "Admin")]
@@ -79,6 +110,13 @@ namespace LMSAPP.Server.Controllers
         public async Task<IResult> GetUserStatistics()
         {
             return await _authService.GetUserStatisticsAsync();
+        }
+
+        [Authorize]
+        [HttpPut("users/{userId}/deactivate")]
+        public async Task<IResult> DeactivateUser(string userId)
+        {
+            return await _authService.DeactivateUserAsync(userId);
         }
     }
 }

@@ -88,6 +88,10 @@ namespace LMSAPP.Server
             builder.Services.AddScoped<IPaymentService, PaymentService>();
             builder.Services.AddScoped<IProgressService, ProgressService>();
             builder.Services.AddScoped<ITokenService, Services.TokenService>();
+
+            // Ajouter HttpContextAccessor
+            builder.Services.AddHttpContextAccessor();
+
             // Configure JWT Authentication
             var key = builder.Configuration["Jwt:Key"];
             var issuer = builder.Configuration["Jwt:Issuer"];
@@ -149,6 +153,12 @@ namespace LMSAPP.Server
                     });
             });
 
+            // Après la configuration CORS et avant var app = builder.Build();
+            builder.Services.AddSpaStaticFiles(configuration =>
+            {
+                configuration.RootPath = "wwwroot";
+            });
+
             var app = builder.Build();
 
             if (app.Environment.IsDevelopment())
@@ -182,9 +192,25 @@ namespace LMSAPP.Server
             app.UseCors("AllowReactApp");
             app.UseAuthentication();
             app.UseAuthorization();
+            app.UseStaticFiles();
+            app.UseSpaStaticFiles();
             app.MapControllers();
 
             app.MapFallbackToFile("/index.html"); // For client-side routing (if applicable)
+
+            // Après var app = builder.Build(); et avant le middleware CSP
+            // Créer le dossier wwwroot et uploads s'ils n'existent pas
+            var webRootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+            if (!Directory.Exists(webRootPath))
+            {
+                Directory.CreateDirectory(webRootPath);
+            }
+
+            var uploadsPath = Path.Combine(webRootPath, "uploads", "avatars");
+            if (!Directory.Exists(uploadsPath))
+            {
+                Directory.CreateDirectory(uploadsPath);
+            }
 
             app.Run();
         }
