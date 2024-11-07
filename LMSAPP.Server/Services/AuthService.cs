@@ -51,7 +51,8 @@ namespace LMSAPP.Server.Services
                     UserName = model.Email,
                     Email = model.Email,
                     FullName = model.FullName,
-                    EmailConfirmed = true
+                    EmailConfirmed = true,
+                    IsActive = true
                 };
 
                 var result = await _userManager.CreateAsync(user, model.Password);
@@ -217,6 +218,11 @@ namespace LMSAPP.Server.Services
                 if (user == null)
                 {
                     return Results.BadRequest("Invalid email or password");
+                }
+
+                if (!user.IsActive)
+                {
+                    return Results.BadRequest("Votre compte a été désactivé. Veuillez contacter l'administrateur pour plus d'informations.");
                 }
 
                 var isPasswordValid = await _userManager.CheckPasswordAsync(user, model.Password);
@@ -388,26 +394,47 @@ namespace LMSAPP.Server.Services
         {
             try
             {
-                var user = await _userManager.FindByIdAsync(userId);
+                _logger.LogInformation($"Attempting to deactivate user {userId}");
+
+                // Récupérer l'utilisateur depuis le contexte avec AsTracking()
+                var user = await _context.Users
+                    .AsTracking()  // Important pour le suivi des modifications
+                    .FirstOrDefaultAsync(u => u.Id == userId);
+
                 if (user == null)
                 {
+                    _logger.LogWarning($"User {userId} not found");
                     return Results.NotFound("User not found");
                 }
 
+                _logger.LogInformation($"Current IsActive status for user {userId}: {user.IsActive}");
+
+                // Mettre à jour le statut
                 user.IsActive = false;
-                var result = await _userManager.UpdateAsync(user);
 
-                if (!result.Succeeded)
+                // Marquer explicitement l'entité comme modifiée
+                _context.Entry(user).State = EntityState.Modified;
+
+                // Sauvegarder les changements
+                var saveResult = await _context.SaveChangesAsync();
+
+                _logger.LogInformation($"SaveChanges result: {saveResult} rows affected");
+
+                if (saveResult > 0)
                 {
-                    return Results.BadRequest(result.Errors);
+                    _logger.LogInformation($"User {userId} successfully deactivated");
+                    return Results.Ok(new { Message = "User deactivated successfully" });
                 }
-
-                return Results.Ok(new { Message = "User deactivated successfully" });
+                else
+                {
+                    _logger.LogError($"Failed to deactivate user {userId}");
+                    return Results.Problem("Failed to deactivate user");
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deactivating user");
-                return Results.Problem("An error occurred while deactivating the user");
+                _logger.LogError(ex, $"Error deactivating user {userId}");
+                return Results.Problem($"An error occurred while deactivating the user: {ex.Message}");
             }
         }
 

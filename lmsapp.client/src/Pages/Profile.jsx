@@ -16,6 +16,7 @@ const Profile = () => {
   const avatarUrl = user?.avatarPath
     ? `${import.meta.env.VITE_API_URL}${user.avatarPath}`
     : null;
+
   const handleAvatarClick = () => {
     fileInputRef.current.click();
   };
@@ -33,7 +34,6 @@ const Profile = () => {
       size: file.size,
     });
 
-    // Vérifications
     if (file.size > 5 * 1024 * 1024) {
       alert('Le fichier est trop volumineux (max 5MB)');
       return;
@@ -92,7 +92,6 @@ const Profile = () => {
 
   const handleDeleteAvatar = async () => {
     try {
-      // Utilisation de la méthode DELETE pour supprimer l'avatar
       const response = await axiosInstance.delete(
         `/Auth/users/${user.id}/avatar`
       );
@@ -117,7 +116,6 @@ const Profile = () => {
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
 
-    // Validation côté client
     if (!userData.email || !userData.fullName) {
       alert('Email et nom complet sont requis');
       return;
@@ -171,7 +169,13 @@ const Profile = () => {
     ) {
       try {
         const response = await axiosInstance.put(
-          `/Auth/users/${user.id}/deactivate`
+          `/Auth/users/${user.id}/deactivate`,
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('token')}`, // Assurez-vous que le jeton est stocké dans le localStorage
+            },
+          }
         );
 
         if (response.data?.message) {

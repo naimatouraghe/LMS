@@ -45,11 +45,18 @@ const Login = () => {
       throw new Error('Format de réponse invalide');
     } catch (err) {
       console.error('Login error:', err);
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          'Email ou mot de passe incorrect'
-      );
+
+      // Vérifier si c'est un message de compte désactivé
+      const errorMessage = err.response?.data;
+      if (errorMessage && errorMessage.includes('désactivé')) {
+        setError(
+          "Votre compte a été désactivé. Veuillez contacter l'administrateur pour plus d'informations."
+        );
+      } else {
+        setError(
+          err.response?.data || err.message || 'Email ou mot de passe incorrect'
+        );
+      }
     } finally {
       setIsLoading(false);
     }
