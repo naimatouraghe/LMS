@@ -95,6 +95,11 @@ const NavbarDesktop = () => {
     console.log('Updated search results:', searchResults);
   }, [searchResults]);
 
+  // Construire l'URL de l'avatar
+  const avatarUrl = user?.avatarPath
+    ? `${import.meta.env.VITE_API_URL}${user.avatarPath}`
+    : null;
+
   return (
     <nav className="hidden lg:flex h-[80px] items-center justify-between px-6 bg-white shadow">
       {/* Search section */}
@@ -173,9 +178,9 @@ const NavbarDesktop = () => {
               className="h-10 w-10 rounded-full flex items-center justify-center hover:opacity-80 transition overflow-hidden"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
-              {user?.avatarPath ? (
+              {avatarUrl ? (
                 <img
-                  src={user.avatarPath}
+                  src={avatarUrl}
                   alt="Avatar"
                   className="h-full w-full object-cover"
                   onError={(e) => {
