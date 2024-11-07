@@ -64,9 +64,15 @@ const NavbarDesktop = () => {
   };
 
   // Handle logout
-  const handleLogout = () => {
-    logout();
-    setIsMenuOpen(false);
+  const handleLogout = async () => {
+    try {
+      await axiosInstance.post('/Auth/logout');
+      logout(); // Fonction du contexte d'authentification
+      setIsMenuOpen(false);
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Vous pouvez ajouter une notification d'erreur ici si vous le souhaitez
+    }
   };
 
   // Close search results when clicking outside
