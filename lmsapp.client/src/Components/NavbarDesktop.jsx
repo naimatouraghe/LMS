@@ -1,8 +1,8 @@
-import { User, Settings, LogOut } from 'lucide-react';
+import { User, LogOut } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import axiosInstance from '@/utils/axios';
 import debounce from 'lodash/debounce';
 
 const NavbarDesktop = () => {
@@ -15,8 +15,8 @@ const NavbarDesktop = () => {
   const searchRef = useRef(null);
   const navigate = useNavigate();
 
-  // Debounced search function
-  const debouncedSearch = debounce(async (query) => {
+  // Fonction de recherche
+  const searchCourses = async (query) => {
     if (!query.trim()) {
       setSearchResults([]);
       return;
@@ -24,18 +24,34 @@ const NavbarDesktop = () => {
 
     try {
       setIsSearching(true);
-      const response = await axios.get(`https://localhost:7001/api/Course/search?query=${query}`);
-      setSearchResults(response.data);
+      const response = await axiosInstance.get('/Course', {
+        params: {
+          searchTerm: query.trim(),
+        },
+      });
+      console.log('Search response:', response.data);
+      const results = response.data || [];
+      setSearchResults(results);
     } catch (error) {
       console.error('Search error:', error);
+      setSearchResults([]);
     } finally {
       setIsSearching(false);
     }
-  }, 300);
+  };
+
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    debounce((query) => {
+      searchCourses(query);
+    }, 300),
+    []
+  );
 
   // Handle search input change
   const handleSearchChange = (e) => {
     const query = e.target.value;
+    console.log('Search query:', query);
     setSearchQuery(query);
     debouncedSearch(query);
   };
@@ -67,6 +83,11 @@ const NavbarDesktop = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Ajout d'un useEffect pour surveiller les changements de searchResults
+  useEffect(() => {
+    console.log('Updated search results:', searchResults);
+  }, [searchResults]);
 
   return (
     <nav className="hidden lg:flex h-[80px] items-center justify-between px-6 bg-white shadow">
@@ -101,6 +122,8 @@ const NavbarDesktop = () => {
           </button>
 
           {/* Search Results Dropdown */}
+          {searchResults.length > 0 &&
+            console.log('Rendering dropdown with results:', searchResults)}
           {searchResults.length > 0 && (
             <div className="absolute w-full mt-2 bg-white rounded-md shadow-lg border border-gray-200 max-h-96 overflow-y-auto z-50">
               {searchResults.map((course) => (
@@ -117,8 +140,12 @@ const NavbarDesktop = () => {
                     />
                   )}
                   <div>
-                    <h4 className="text-sm font-medium text-gray-900">{course.title}</h4>
-                    <p className="text-xs text-gray-500">{course.category?.name}</p>
+                    <h4 className="text-sm font-medium text-gray-900">
+                      {course.title}
+                    </h4>
+                    <p className="text-xs text-gray-500">
+                      {course.category?.name}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -132,18 +159,18 @@ const NavbarDesktop = () => {
         <div className="flex items-center gap-x-4">
           <div className="hidden md:flex items-center">
             <span className="text-sm font-medium text-slate-700">
-              {user?.fullName} 
+              {user?.fullName}
             </span>
           </div>
           <div className="relative" ref={menuRef}>
-            <button 
+            <button
               className="h-10 w-10 rounded-full flex items-center justify-center hover:opacity-80 transition overflow-hidden"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
               {user?.avatarPath ? (
-                <img 
-                  src={user.avatarPath} 
-                  alt="Avatar" 
+                <img
+                  src={user.avatarPath}
+                  alt="Avatar"
                   className="h-full w-full object-cover"
                   onError={(e) => {
                     e.target.onerror = null;
@@ -168,7 +195,7 @@ const NavbarDesktop = () => {
                   <User className="h-4 w-4 mr-2" />
                   Profile
                 </Link>
-                
+
                 <div className="border-t border-gray-100"></div>
                 <button
                   onClick={handleLogout}
