@@ -157,9 +157,20 @@ namespace LMSAPP.Server.Controllers
         [Authorize]
         public async Task<IResult> GetPurchasedCourses()
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
-                ?? throw new UnauthorizedAccessException("User not authenticated");
-            return await _courseService.GetPurchasedCoursesAsync(userId);
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                    ?? throw new UnauthorizedAccessException("User not authenticated");
+                return await _courseService.GetPurchasedCoursesAsync(userId);
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem(
+                    title: "Error getting purchased courses",
+                    detail: ex.Message,
+                    statusCode: StatusCodes.Status500InternalServerError
+                );
+            }
         }
 
         [HttpGet("{courseId}/progress")]

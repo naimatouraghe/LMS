@@ -3,11 +3,13 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using LMSAPP.Server.Services.Interfaces;
 using LMSAPP.Server.DTOs.Auth;
+using Microsoft.AspNetCore.Cors;
 
 namespace LMSAPP.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [EnableCors("AllowReactApp")]
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;

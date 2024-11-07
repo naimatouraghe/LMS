@@ -1,15 +1,24 @@
 // src/components/Sidebar.js
-import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import NavLinks from './Navigation/NavLinks';
 
 const Sidebar = () => {
-    return (
-        <div className="flex flex-col h-full p-4">
-            <h1 className="text-xl font-bold mb-4">LMS App</h1>
-            <Link to="/" className="text-gray-300 hover:text-white py-2">Dashboard</Link>
-            <Link to="/browse" className="text-gray-300 hover:text-white py-2">Browse</Link>
-            {/* Add more navigation links here */}
-        </div>
-    );
+  const { user } = useAuth();
+
+  return (
+    <div className="flex flex-col h-full p-4">
+      <div className="mb-8">
+        <h1 className="text-white text-2xl font-bold">LMSAPP</h1>
+        {user && <p className="text-gray-400 mt-2">Welcome, {user.fullName}</p>}
+      </div>
+
+      <nav className="flex-grow flex flex-col space-y-2">
+        <NavLinks />
+      </nav>
+
+      {/* Autres éléments du sidebar (logout, etc.) */}
+    </div>
+  );
 };
 
 export default Sidebar;

@@ -4,6 +4,10 @@ using LMSAPP.Server.Models;
 using LMSAPP.Server.Services.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace LMSAPP.Server.Services
 {
@@ -14,19 +18,22 @@ namespace LMSAPP.Server.Services
         private readonly ITokenService _tokenService;
         private readonly ILogger<AuthService> _logger;
         private readonly ApplicationDbContext _context;
+        private readonly IConfiguration _configuration;
 
         public AuthService(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             ITokenService tokenService,
             ILogger<AuthService> logger,
-            ApplicationDbContext context)
+            ApplicationDbContext context,
+            IConfiguration configuration)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _tokenService = tokenService;
             _logger = logger;
             _context = context;
+            _configuration = configuration;
         }
 
         public async Task<IResult> CreateUserAsync(RegisterDto model)
@@ -68,19 +75,21 @@ namespace LMSAPP.Server.Services
                 }
 
                 var roles = await _userManager.GetRolesAsync(user);
-                return Results.Ok(new
+
+                var userDto = new
                 {
-                    Id = user.Id,
-                    Email = user.Email,
-                    FullName = user.FullName,
-                    AvatarPath = user.AvatarPath,
-                    Roles = roles
-                });
+                    id = user.Id,
+                    email = user.Email,
+                    userName = user.UserName,
+                    fullName = user.FullName,
+                    roles = roles,
+                };
+
+                return Results.Ok(new { value = userDto });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting user");
-                return Results.Problem("An error occurred while getting the user");
+                return Results.BadRequest($"Error retrieving user: {ex.Message}");
             }
         }
 
@@ -154,35 +163,59 @@ namespace LMSAPP.Server.Services
                 var user = await _userManager.FindByEmailAsync(model.Email);
                 if (user == null)
                 {
-                    return Results.BadRequest("Invalid credentials");
+                    return Results.BadRequest("Invalid email or password");
                 }
 
-                var result = await _signInManager.CheckPasswordSignInAsync(user, model.Password, false);
-                if (!result.Succeeded)
+                var isPasswordValid = await _userManager.CheckPasswordAsync(user, model.Password);
+                if (!isPasswordValid)
                 {
-                    return Results.BadRequest("Invalid credentials");
+                    return Results.BadRequest("Invalid email or password");
                 }
 
-                var token = await _tokenService.CreateToken(user);
-                var roles = await _userManager.GetRolesAsync(user);
+                var userRoles = await _userManager.GetRolesAsync(user);
+
+                var claims = new List<Claim>
+                {
+                    new Claim(ClaimTypes.NameIdentifier, user.Id),
+                    new Claim(ClaimTypes.Name, user.UserName),
+                    new Claim(ClaimTypes.Email, user.Email),
+                    new Claim("userId", user.Id)
+                };
+
+                foreach (var role in userRoles)
+                {
+                    claims.Add(new Claim(ClaimTypes.Role, role));
+                }
+
+                var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Secret"]));
+                var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+                var token = new JwtSecurityToken(
+                    issuer: _configuration["JWT:ValidIssuer"],
+                    audience: _configuration["JWT:ValidAudience"],
+                    claims: claims,
+                    expires: DateTime.Now.AddHours(3),
+                    signingCredentials: creds
+                );
+
+                var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
 
                 return Results.Ok(new
                 {
-                    Token = token,
-                    User = new
+                    token = tokenString,
+                    expiration = token.ValidTo,
+                    user = new
                     {
-                        Id = user.Id,
-                        Email = user.Email,
-                        FullName = user.FullName,
-                        AvatarPath = user.AvatarPath,
-                        Roles = roles
+                        id = user.Id,
+                        email = user.Email,
+                        userName = user.UserName,
+                        roles = userRoles
                     }
                 });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during login");
-                return Results.Problem("An error occurred during login");
+                return Results.BadRequest($"Login failed: {ex.Message}");
             }
         }
 

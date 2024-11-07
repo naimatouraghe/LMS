@@ -1,102 +1,108 @@
-import { BrowserRouter as Router, Route, Routes, Link, useLocation } from 'react-router-dom';
-import { useState } from 'react';
-import Sidebar from './components/Sidebar';
-import Navbar from './components/Navbar';
+import {
+  BrowserRouter as Router,
+  Route,
+  Routes,
+  Navigate,
+} from 'react-router-dom';
+import Layout from './components/Layout';
 import Browse from './pages/Browse';
-import Dashboard from './Pages/Dashboard';
+import TeacherDashboard from './Pages/Dashboard/TeacherDashboard';
+import AdminDashboard from './Pages/Dashboard/AdminDashboard';
+
 import Register from './Pages/Register';
 import Login from './Pages/Login';
 import Profile from './pages/Profile';
 import Course from './Pages/Course';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import Dashboard from './Pages/Dashboard';
 
-// Composant Layout pour gérer l'affichage conditionnel du Sidebar
-const Layout = ({ children }) => {
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const location = useLocation();
-    const isCoursePage = location.pathname.startsWith('/courses/');
+// Composant de protection des routes
+const ProtectedRoute = ({ children, allowedRoles }) => {
+  const { user, isAuthenticated } = useAuth();
 
-    return (
-        <div className="h-full">
-            {/* Sidebar - Caché sur la page Course */}
-            {!isCoursePage && (
-                <div className="hidden md:flex h-full w-72 flex-col fixed inset-y-0 z-50 bg-gray-900">
-                    <Sidebar />
-                </div>
-            )}
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
 
-            {/* Main Content */}
-            <main className={`h-full ${!isCoursePage ? 'md:pl-72' : ''}`}>
-                {/* Mobile Navbar */}
-                <div className="md:hidden">
-                    <Navbar setIsMenuOpen={setIsMenuOpen} />
-                </div>
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    return <Navigate to="/" />;
+  }
 
-                {/* Content Area */}
-                <div className={`${isCoursePage ? 'p-0' : 'p-6'}`}>
-                    {children}
-                </div>
-            </main>
+  return children;
+};
 
-            {/* Mobile Menu Overlay */}
-            {isMenuOpen && !isCoursePage && (
-                <div className="fixed inset-0 bg-black bg-opacity-75 z-50 md:hidden">
-                    <div className="flex h-full flex-col">
-                        <div className="flex justify-end p-4">
-                            <button
-                                className="text-white"
-                                onClick={() => setIsMenuOpen(false)}
-                            >
-                                ✕
-                            </button>
-                        </div>
-                        <nav className="flex-grow flex flex-col items-center justify-center">
-                            <Link
-                                to="/"
-                                className="text-white py-4 text-xl hover:text-gray-300 transition"
-                                onClick={() => setIsMenuOpen(false)}
-                            >
-                                Dashboard
-                            </Link>
-                            <Link
-                                to="/browse"
-                                className="text-white py-4 text-xl hover:text-gray-300 transition"
-                                onClick={() => setIsMenuOpen(false)}
-                            >
-                                Browse
-                            </Link>
-                            <Link
-                                to="/profile"
-                                className="text-white py-4 text-xl hover:text-gray-300 transition"
-                                onClick={() => setIsMenuOpen(false)}
-                            >
-                                Profile
-                            </Link>
-                        </nav>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
+// Composant de redirection du dashboard selon le rôle
+const DashboardRouter = () => {
+  const { user } = useAuth();
+
+  switch (user.role) {
+    case 'Admin':
+      return <AdminDashboard />;
+    case 'Teacher':
+      return <TeacherDashboard />;
+    default:
+      return <Navigate to="/" />;
+  }
 };
 
 function App() {
-    return (
-        <Router>
-            <AuthProvider>
-                <Layout>
-                    <Routes>
-                        <Route path="/" element={<Dashboard />} />
-                        <Route path="/browse" element={<Browse />} />
-                        <Route path="/profile" element={<Profile />} />
-                        <Route path="/register" element={<Register />} />
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/courses/:courseId" element={<Course />} />
-                    </Routes>
-                </Layout>
-            </AuthProvider>
-        </Router>
-    );
+  return (
+    <Router>
+      <AuthProvider>
+        <Layout>
+          <Routes>
+            {/* Routes publiques */}
+
+            <Route path="/" element={<Browse />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+
+            {/* Routes protégées */}
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/courses/:courseId"
+              element={
+                <ProtectedRoute>
+                  <Course />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Routes Admin */}
+            <Route
+              path="/admin/*"
+              element={
+                <ProtectedRoute allowedRoles={['Admin']}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Routes Teacher */}
+            <Route
+              path="/teacher/*"
+              element={
+                <ProtectedRoute allowedRoles={['Teacher']}>
+                  <TeacherDashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Route 404 */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Layout>
+      </AuthProvider>
+    </Router>
+  );
 }
 
 export default App;

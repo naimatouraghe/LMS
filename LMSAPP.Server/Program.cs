@@ -135,22 +135,19 @@ namespace LMSAPP.Server
                     policy.RequireRole("Admin"));
             });
 
-
-
-
-
+            // Ajouter la configuration CORS
             builder.Services.AddCors(options =>
-                {
-                    options.AddPolicy("AllowAll",
-                        builder =>
-                        {
-                            builder
-                                .WithOrigins("https://localhost:5173") // URL de votre frontend
-                                .AllowAnyMethod()
-                                .AllowAnyHeader()
-                                .AllowCredentials();
-                        });
-                });
+            {
+                options.AddPolicy("AllowReactApp",
+                    builder =>
+                    {
+                        builder
+                            .WithOrigins("https://localhost:5173", "http://localhost:5173")
+                            .AllowAnyMethod()
+                            .AllowAnyHeader()
+                            .AllowCredentials();
+                    });
+            });
 
             var app = builder.Build();
 
@@ -161,7 +158,7 @@ namespace LMSAPP.Server
                 app.UseSwaggerUI(c =>
                 {
                     c.SwaggerEndpoint("/swagger/v1/swagger.json", "LMSAPP API v1");
-                    c.RoutePrefix = "swagger";
+                    c.RoutePrefix = string.Empty;
                 });
             }
 
@@ -182,7 +179,7 @@ namespace LMSAPP.Server
 
             app.UseHttpsRedirection();
             app.UseRouting();
-            app.UseCors("AllowSpecificOrigin");
+            app.UseCors("AllowReactApp");
             app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();

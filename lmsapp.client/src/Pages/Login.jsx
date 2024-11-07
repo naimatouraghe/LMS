@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import axiosInstance from '../utils/axios';
 import { useAuth } from '../contexts/AuthContext';
 
 const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
-  
+
   const [formData, setFormData] = useState({
     email: '',
-    password: ''
+    password: '',
   });
 
   const [error, setError] = useState('');
@@ -18,7 +18,7 @@ const Login = () => {
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
@@ -28,14 +28,28 @@ const Login = () => {
     setError('');
 
     try {
-      const response = await axios.post('https://localhost:7001/api/Auth/login', formData);
-      if (response.data.token) {
+      const response = await axiosInstance.post('/Auth/login', {
+        email: formData.email,
+        password: formData.password,
+      });
+
+      console.log('Login response:', response.data);
+
+      if (response.data?.token) {
         login(response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
         navigate('/');
+        return;
       }
+
+      throw new Error('Format de réponse invalide');
     } catch (err) {
       console.error('Login error:', err);
-      setError(err.response?.data?.message || 'Email ou mot de passe incorrect');
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          'Email ou mot de passe incorrect'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -50,7 +64,10 @@ const Login = () => {
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Ou{' '}
-            <Link to="/register" className="font-medium text-indigo-600 hover:text-indigo-500">
+            <Link
+              to="/register"
+              className="font-medium text-indigo-600 hover:text-indigo-500"
+            >
               créez un nouveau compte
             </Link>
           </p>
@@ -58,7 +75,10 @@ const Login = () => {
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
-            <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <div
+              className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+              role="alert"
+            >
               <span className="block sm:inline">{error}</span>
             </div>
           )}
@@ -106,13 +126,19 @@ const Login = () => {
                 type="checkbox"
                 className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
               />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+              <label
+                htmlFor="remember-me"
+                className="ml-2 block text-sm text-gray-900"
+              >
                 Se souvenir de moi
               </label>
             </div>
 
             <div className="text-sm">
-              <a href="#" className="font-medium text-indigo-600 hover:text-indigo-500">
+              <a
+                href="#"
+                className="font-medium text-indigo-600 hover:text-indigo-500"
+              >
                 Mot de passe oublié?
               </a>
             </div>
@@ -128,7 +154,6 @@ const Login = () => {
             >
               {isLoading ? (
                 <span className="absolute left-0 inset-y-0 flex items-center pl-3">
-                  {/* Spinner icon */}
                   <svg
                     className="animate-spin h-5 w-5 text-white"
                     xmlns="http://www.w3.org/2000/svg"
