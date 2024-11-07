@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import axios from 'axios';
 import { useNavigate, Link } from 'react-router-dom';
+import axiosInstance from '@/utils/axios';
 
 const Register = () => {
   const navigate = useNavigate();
@@ -27,33 +27,20 @@ const Register = () => {
     setError('');
 
     try {
-      const response = await axios.post(
-        'https://localhost:7001/api/Auth/register',
-        {
-          email: formData.email,
-          password: formData.password,
-          fullName: formData.fullName,
-          role: formData.role,
-        }
-      );
+      const response = await axiosInstance.post('/Auth/register', formData);
 
-      // Vérifier la réponse selon la structure de l'API
-      if (response.data?.statusCode === 200) {
-        // Redirection vers login après inscription réussie
+      if (response.status === 200) {
         navigate('/login', {
           state: {
             message: 'Inscription réussie. Veuillez vous connecter.',
           },
         });
-      } else {
-        throw new Error(
-          response.data?.message || "Erreur lors de l'inscription"
-        );
       }
     } catch (err) {
       console.error('Register error:', err);
       setError(
-        err.response?.data?.message ||
+        err.response?.data?.detail ||
+          err.response?.data?.message ||
           err.message ||
           "Une erreur est survenue lors de l'inscription"
       );
