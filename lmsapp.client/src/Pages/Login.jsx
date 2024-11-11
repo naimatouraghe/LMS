@@ -1,25 +1,22 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import axiosInstance from '../utils/axios';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { LoadingSpinner } from '../components/common/LoadingSpinner';
 
 const Login = () => {
-  const navigate = useNavigate();
   const { login } = useAuth();
-
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
-
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       [e.target.name]: e.target.value,
-    });
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -28,35 +25,18 @@ const Login = () => {
     setError('');
 
     try {
-      const response = await axiosInstance.post('/Auth/login', {
-        email: formData.email,
-        password: formData.password,
-      });
+      const result = await login(formData);
 
-      console.log('Login response:', response.data);
-
-      if (response.data?.token) {
-        login(response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        navigate('/');
+      if (!result.success) {
+        setError(result.error);
         return;
       }
 
-      throw new Error('Format de réponse invalide');
+      // Redirection après connexion réussie
+      window.location.href = '/'; // ou utilisez navigate si vous utilisez react-router
     } catch (err) {
       console.error('Login error:', err);
-
-      // Vérifier si c'est un message de compte désactivé
-      const errorMessage = err.response?.data;
-      if (errorMessage && errorMessage.includes('désactivé')) {
-        setError(
-          "Votre compte a été désactivé. Veuillez contacter l'administrateur pour plus d'informations."
-        );
-      } else {
-        setError(
-          err.response?.data || err.message || 'Email ou mot de passe incorrect'
-        );
-      }
+      setError(err.message || 'Une erreur est survenue lors de la connexion');
     } finally {
       setIsLoading(false);
     }
@@ -65,6 +45,7 @@ const Login = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow">
+        {/* En-tête */}
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Connectez-vous à votre compte
@@ -80,16 +61,16 @@ const Login = () => {
           </p>
         </div>
 
+        {/* Formulaire */}
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {/* Message d'erreur */}
           {error && (
-            <div
-              className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative"
-              role="alert"
-            >
+            <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative">
               <span className="block sm:inline">{error}</span>
             </div>
           )}
 
+          {/* Champs de formulaire */}
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <label htmlFor="email" className="sr-only">
@@ -99,7 +80,6 @@ const Login = () => {
                 id="email"
                 name="email"
                 type="email"
-                autoComplete="email"
                 required
                 value={formData.email}
                 onChange={handleChange}
@@ -115,7 +95,6 @@ const Login = () => {
                 id="password"
                 name="password"
                 type="password"
-                autoComplete="current-password"
                 required
                 value={formData.password}
                 onChange={handleChange}
@@ -125,6 +104,7 @@ const Login = () => {
             </div>
           </div>
 
+          {/* Options supplémentaires */}
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <input
@@ -142,50 +122,30 @@ const Login = () => {
             </div>
 
             <div className="text-sm">
-              <a
-                href="#"
+              <Link
+                to="/forgot-password"
                 className="font-medium text-indigo-600 hover:text-indigo-500"
               >
                 Mot de passe oublié?
-              </a>
+              </Link>
             </div>
           </div>
 
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
-                isLoading ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-            >
-              {isLoading ? (
-                <span className="absolute left-0 inset-y-0 flex items-center pl-3">
-                  <svg
-                    className="animate-spin h-5 w-5 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                </span>
-              ) : null}
-              {isLoading ? 'Connexion...' : 'Se connecter'}
-            </button>
-          </div>
+          {/* Bouton de soumission */}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
+              isLoading ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            {isLoading && (
+              <span className="absolute left-0 inset-y-0 flex items-center pl-3">
+                <LoadingSpinner />
+              </span>
+            )}
+            {isLoading ? 'Connexion...' : 'Se connecter'}
+          </button>
         </form>
       </div>
     </div>

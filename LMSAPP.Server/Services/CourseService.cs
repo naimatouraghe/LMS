@@ -1033,36 +1033,77 @@ namespace LMSAPP.Server.Services
         {
             try
             {
-                var userProgress = await _context.UserProgresses
+                _logger.LogInformation("Getting purchased courses for user {UserId}", userId);
+
+                // Vérifier si l'utilisateur existe
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null)
+                {
+                    _logger.LogWarning("User {UserId} not found", userId);
+                    return Results.NotFound("User not found");
+                }
+
+                // Vérifier les achats existants
+                var purchases = await _context.Purchases
+                    .Where(p => p.UserId == userId)
+                    .ToListAsync();
+
+                _logger.LogInformation("Found {Count} purchases for user {UserId}",
+                    purchases.Count, userId);
+
+                if (!purchases.Any())
+                {
+                    _logger.LogInformation("No purchases found for user {UserId}", userId);
+                    return Results.Ok(new { value = new List<object>() });
+                }
+
+                // Récupérer les chapitres complétés
+                var completedChapters = await _context.UserProgresses
                     .Where(up => up.UserId == userId && up.IsCompleted)
                     .Select(up => up.ChapterId)
                     .ToListAsync();
 
+                _logger.LogInformation("Found {Count} completed chapters for user {UserId}",
+                    completedChapters.Count, userId);
+
+                // Récupérer les cours avec leurs détails
                 var purchasedCourses = await _context.Purchases
                     .Where(p => p.UserId == userId)
                     .Include(p => p.Course)
-                    .ThenInclude(c => c.Chapters)
+                        .ThenInclude(c => c.Category)
+                    .Include(p => p.Course.Chapters)
                     .Select(p => new
                     {
-                        p.Course.Id,
-                        p.Course.Title,
-                        p.Course.Description,
-                        p.Course.ImageUrl,
-                        p.Course.Price,
+                        Id = p.Course.Id,
+                        Title = p.Course.Title,
+                        Description = p.Course.Description,
+                        ImageUrl = p.Course.ImageUrl,
+                        Price = p.Course.Price,
+                        IsPublished = p.Course.IsPublished,
+                        CategoryId = p.Course.CategoryId,
+                        Level = p.Course.Level,
+                        Category = new
+                        {
+                            Id = p.Course.Category.Id,
+                            Name = p.Course.Category.Name
+                        },
                         Progress = p.Course.Chapters.Any()
                             ? Math.Round((double)p.Course.Chapters
-                                .Count(c => userProgress.Contains(c.Id))
-                                / p.Course.Chapters.Count * 100, 2)
+                                .Count(c => completedChapters.Contains(c.Id))
+                                / p.Course.Chapters.Count * 100)
                             : 0
                     })
                     .ToListAsync();
+
+                _logger.LogInformation("Returning {Count} purchased courses for user {UserId}",
+                    purchasedCourses.Count, userId);
 
                 return Results.Ok(new { value = purchasedCourses });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting purchased courses for user {UserId}", userId);
-                throw new Exception("An error occurred while getting purchased courses", ex);
+                return Results.Problem("An error occurred while getting purchased courses");
             }
         }
 

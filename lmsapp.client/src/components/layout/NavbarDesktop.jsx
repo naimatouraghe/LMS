@@ -1,8 +1,9 @@
 import { User, LogOut } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import axiosInstance from '@/utils/axios';
+import { authApi } from '../../services/api/authApi';
+import { courseApi } from '../../services/api/courseApi';
 import debounce from 'lodash/debounce';
 
 const NavbarDesktop = () => {
@@ -24,14 +25,10 @@ const NavbarDesktop = () => {
 
     try {
       setIsSearching(true);
-      const response = await axiosInstance.get('/Course', {
-        params: {
-          searchTerm: query.trim(),
-        },
+      const results = await courseApi.getCourses({
+        searchTerm: query.trim(),
       });
-      console.log('Search response:', response.data);
-      const results = response.data || [];
-      setSearchResults(results);
+      setSearchResults(Array.isArray(results) ? results : []);
     } catch (error) {
       console.error('Search error:', error);
       setSearchResults([]);
@@ -51,7 +48,6 @@ const NavbarDesktop = () => {
   // Handle search input change
   const handleSearchChange = (e) => {
     const query = e.target.value;
-    console.log('Search query:', query);
     setSearchQuery(query);
     debouncedSearch(query);
   };
@@ -66,12 +62,11 @@ const NavbarDesktop = () => {
   // Handle logout
   const handleLogout = async () => {
     try {
-      await axiosInstance.post('/Auth/logout');
+      await authApi.logout();
       logout(); // Fonction du contexte d'authentification
       setIsMenuOpen(false);
     } catch (error) {
       console.error('Logout error:', error);
-      // Vous pouvez ajouter une notification d'erreur ici si vous le souhaitez
     }
   };
 
@@ -89,17 +84,36 @@ const NavbarDesktop = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+  // Fonction pour construire l'URL de l'avatar
+  const getAvatarUrl = (avatarPath) => {
+    if (!avatarPath) return null;
 
-  // Ajout d'un useEffect pour surveiller les changements de searchResults
-  useEffect(() => {
-    console.log('Updated search results:', searchResults);
-  }, [searchResults]);
+    try {
+      // Si c'est déjà une URL complète
+      if (avatarPath.startsWith('http')) {
+        return avatarPath;
+      }
 
+      // Retirer le préfixe /api de VITE_API_URL
+      const baseUrl = import.meta.env.VITE_API_URL.replace(/\/api$/, '');
+
+      // Nettoyer le chemin en retirant le slash initial s'il existe
+      const cleanPath = avatarPath.startsWith('/')
+        ? avatarPath.slice(1)
+        : avatarPath;
+
+      // Construire l'URL correcte
+      return `${baseUrl}/${cleanPath}`;
+    } catch (error) {
+      console.error(
+        "Erreur lors de la construction de l'URL de l'avatar:",
+        error
+      );
+      return null;
+    }
+  };
   // Construire l'URL de l'avatar
-  const avatarUrl = user?.avatarPath
-    ? `${import.meta.env.VITE_API_URL}${user.avatarPath}`
-    : null;
-
+  const avatarUrl = getAvatarUrl(user?.avatar);
   return (
     <nav className="hidden lg:flex h-[80px] items-center justify-between px-6 bg-white shadow">
       {/* Search section */}
@@ -133,8 +147,6 @@ const NavbarDesktop = () => {
           </button>
 
           {/* Search Results Dropdown */}
-          {searchResults.length > 0 &&
-            console.log('Rendering dropdown with results:', searchResults)}
           {searchResults.length > 0 && (
             <div className="absolute w-full mt-2 bg-white rounded-md shadow-lg border border-gray-200 max-h-96 overflow-y-auto z-50">
               {searchResults.map((course) => (

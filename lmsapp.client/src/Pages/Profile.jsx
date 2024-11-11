@@ -1,115 +1,112 @@
 import { useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import axiosInstance from '@/utils/axios';
+import { authApi } from '../services/api/authApi';
+import { User, Camera, Trash2 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 const Profile = () => {
+  const navigate = useNavigate();
   const { user, logout, updateUser } = useAuth();
-
   const [avatarPreview, setAvatarPreview] = useState(null);
   const fileInputRef = useRef(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const [userData, setUserData] = useState({
     fullName: user?.fullName || '',
     email: user?.email || '',
   });
 
-  const avatarUrl = user?.avatarPath
-    ? `${import.meta.env.VITE_API_URL}${user.avatarPath}`
-    : null;
+  const getAvatarUrl = (avatarPath) => {
+    if (!avatarPath) return null;
 
-  const handleAvatarClick = () => {
-    fileInputRef.current.click();
+    try {
+      // Si c'est déjà une URL complète
+      if (avatarPath.startsWith('http')) {
+        return avatarPath;
+      }
+
+      // Retirer le préfixe /api de VITE_API_URL
+      const baseUrl = import.meta.env.VITE_API_URL.replace(/\/api$/, '');
+
+      // Nettoyer le chemin en retirant le slash initial s'il existe
+      const cleanPath = avatarPath.startsWith('/')
+        ? avatarPath.slice(1)
+        : avatarPath;
+
+      // Construire l'URL correcte
+      return `${baseUrl}/${cleanPath}`;
+    } catch (error) {
+      console.error(
+        "Erreur lors de la construction de l'URL de l'avatar:",
+        error
+      );
+      return null;
+    }
   };
 
   const handleAvatarChange = async (e) => {
     const file = e.target.files[0];
-    if (!file) {
-      console.log('Aucun fichier sélectionné');
-      return;
-    }
-
-    console.log('Fichier sélectionné:', {
-      name: file.name,
-      type: file.type,
-      size: file.size,
-    });
+    if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      alert('Le fichier est trop volumineux (max 5MB)');
+      toast.error('Le fichier est trop volumineux (max 5MB)');
       return;
     }
 
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
     if (!allowedTypes.includes(file.type)) {
-      alert('Type de fichier non autorisé. Utilisez JPG, PNG ou GIF.');
+      toast.error('Type de fichier non autorisé. Utilisez JPG, PNG ou GIF.');
       return;
     }
 
     try {
       const formData = new FormData();
-      formData.append('email', userData.email);
-      formData.append('fullName', userData.fullName);
-      formData.append('avatar', file);
+      formData.append('Avatar', file);
+      formData.append('FullName', user.fullName);
+      formData.append('Email', user.email);
 
-      const response = await axiosInstance.put(
-        `/Auth/users/${user.id}`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
+      const response = await authApi.updateUser(user.id, formData);
 
-      console.log('Réponse du serveur:', response.data);
-
-      if (response.data?.value) {
+      if (response?.value) {
+        // Mise à jour correcte avec le nouveau chemin d'avatar
         const updatedUser = {
           ...user,
-          ...response.data.value,
+          avatar: response.value.avatarPath, // Utiliser avatarPath au lieu de avatar
         };
-
         updateUser(updatedUser);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        setAvatarPreview(
-          `${import.meta.env.VITE_API_URL}${updatedUser.avatarPath}`
-        );
-        alert('Avatar mis à jour avec succès');
+        setAvatarPreview(null);
+        setImgError(false);
+        toast.success('Avatar mis à jour avec succès');
       }
     } catch (error) {
-      console.error('Erreur détaillée:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-      });
-
-      const errorMessage =
+      console.error("Erreur de mise à jour de l'avatar:", error);
+      toast.error(
         error.response?.data?.message ||
-        "Erreur lors de la mise à jour de l'avatar";
-      alert(errorMessage);
+          "Erreur lors de la mise à jour de l'avatar"
+      );
     }
   };
 
   const handleDeleteAvatar = async () => {
     try {
-      const response = await axiosInstance.delete(
-        `/Auth/users/${user.id}/avatar`
-      );
+      const formData = new FormData();
+      formData.append('FullName', user.fullName);
+      formData.append('Email', user.email);
+      formData.append('AvatarPath', '');
 
-      if (response.data?.message) {
-        setAvatarPreview(null);
-        const updatedUser = { ...user, avatarPath: null };
-
-        updateUser(updatedUser);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        alert('Avatar supprimé avec succès');
-      }
+      await authApi.updateUser(user.id, formData);
+      setAvatarPreview(null);
+      setImgError(false);
+      const updatedUser = { ...user, avatar: null };
+      updateUser(updatedUser);
+      toast.success('Avatar supprimé avec succès');
     } catch (error) {
-      console.error(
-        'Erreur lors de la suppression:',
-        error.response?.data.errors
+      console.error("Erreur de suppression de l'avatar:", error);
+      toast.error(
+        error.response?.data?.message ||
+          "Erreur lors de la suppression de l'avatar"
       );
-      alert("Erreur lors de la suppression de l'avatar");
     }
   };
 
@@ -117,262 +114,184 @@ const Profile = () => {
     e.preventDefault();
 
     if (!userData.email || !userData.fullName) {
-      alert('Email et nom complet sont requis');
+      toast.error('Email et nom complet sont requis');
       return;
     }
 
     if (!userData.email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-      alert("Format d'email invalide");
+      toast.error("Format d'email invalide");
       return;
     }
 
     try {
       const formData = new FormData();
-      formData.append('email', userData.email.trim());
-      formData.append('fullName', userData.fullName.trim());
+      formData.append('Email', userData.email.trim());
+      formData.append('FullName', userData.fullName.trim());
 
-      const response = await axiosInstance.put(
-        `/Auth/users/${user.id}`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
+      const response = await authApi.updateUser(user.id, formData);
 
-      if (response.data?.value) {
+      if (response?.value) {
         setIsEditing(false);
-        const updatedUser = { ...user, ...response.data.value };
-
+        const updatedUser = { ...user, ...response.value };
         updateUser(updatedUser);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        alert('Profil mis à jour avec succès');
+        toast.success('Profil mis à jour avec succès');
       }
     } catch (error) {
-      console.error('API Error:', error.response?.data);
-      console.error('Erreur lors de la mise à jour du profil:', error);
-
-      const errorMessage =
-        error.response?.data?.message ||
-        error.response?.data?.errors?.join(', ') ||
-        'Erreur lors de la mise à jour du profil';
-      alert(errorMessage);
+      console.error('Erreur de mise à jour:', error);
+      toast.error(error.message || 'Erreur lors de la mise à jour du profil');
     }
   };
 
   const handleDeactivateAccount = async () => {
-    if (
-      window.confirm(
-        'Êtes-vous sûr de vouloir désactiver votre compte ? Cette action ne peut pas être annulée.'
-      )
-    ) {
-      try {
-        const response = await axiosInstance.put(
-          `/Auth/users/${user.id}/deactivate`,
-          {},
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('token')}`, // Assurez-vous que le jeton est stocké dans le localStorage
-            },
-          }
-        );
+    try {
+      const isConfirmed = window.confirm(
+        'Êtes-vous sûr de vouloir désactiver votre compte ? Cette action est irréversible.'
+      );
 
-        if (response.data?.message) {
-          alert('Compte désactivé avec succès');
-          logout();
-        }
-      } catch (error) {
-        console.error('Erreur lors de la désactivation:', error);
-        alert('Erreur lors de la désactivation du compte');
-      }
+      if (!isConfirmed) return;
+
+      await authApi.deactivateUser(user.id);
+      toast.success('Compte désactivé avec succès');
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Erreur de désactivation:', error);
+      toast.error(error.message || 'Erreur lors de la désactivation du compte');
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="p-6 sm:p-8">
-            <div className="flex flex-col sm:flex-row items-center">
-              <div className="relative">
-                <div
-                  onClick={handleAvatarClick}
-                  className="relative h-24 w-24 cursor-pointer group"
-                >
-                  <div className="h-24 w-24 bg-slate-900 rounded-full flex items-center justify-center text-white text-2xl font-bold overflow-hidden">
-                    {avatarPreview ? (
-                      <img
-                        src={avatarPreview}
-                        alt="Avatar preview"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : user?.avatarPath ? (
-                      <img
-                        src={avatarUrl}
-                        alt="User avatar"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <>{user?.fullName?.[0]}</>
-                    )}
-                  </div>
-                  <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="text-white text-sm">Changer</span>
-                  </div>
-                </div>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleAvatarChange}
-                  className="hidden"
-                  accept="image/*"
+    <div className="max-w-4xl mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-8">Profil</h1>
+
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <div className="flex items-center mb-8">
+          <div className="relative">
+            <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-200">
+              {!imgError && (user?.avatar || avatarPreview) ? (
+                <img
+                  src={avatarPreview || getAvatarUrl(user.avatar)}
+                  alt="Avatar"
+                  className="w-full h-full object-cover"
+                  onError={() => setImgError(true)}
                 />
-                {user?.avatarPath && (
-                  <button
-                    onClick={handleDeleteAvatar}
-                    className="absolute -bottom-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
-                    title="Supprimer l'avatar"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                      />
-                    </svg>
-                  </button>
-                )}
-              </div>
-
-              <div className="sm:ml-6 text-center sm:text-left mt-4 sm:mt-0">
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {userData.fullName}
-                </h1>
-                <p className="text-gray-500 mt-1">{userData.email}</p>
-                <div className="mt-4 flex flex-wrap gap-2 justify-center sm:justify-start">
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                    Student
-                  </span>
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                    Active
-                  </span>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                  <User className="w-12 h-12 text-gray-400" />
                 </div>
-              </div>
+              )}
             </div>
 
-            <div className="mt-8">
-              <div className="mt-6">
-                <form onSubmit={handleProfileUpdate}>
-                  <div className="space-y-4">
-                    <div>
-                      <label
-                        htmlFor="fullName"
-                        className="block text-sm font-medium text-gray-700"
-                      >
-                        Full Name
-                      </label>
-                      <input
-                        type="text"
-                        id="fullName"
-                        value={userData.fullName}
-                        onChange={(e) =>
-                          setUserData({ ...userData, fullName: e.target.value })
-                        }
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                        disabled={!isEditing}
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="email"
-                        className="block text-sm font-medium text-gray-700"
-                      >
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        id="email"
-                        value={userData.email}
-                        onChange={(e) =>
-                          setUserData({ ...userData, email: e.target.value })
-                        }
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                        disabled={!isEditing}
-                      />
-                    </div>
-                  </div>
-                  <div className="mt-6 flex items-center justify-end space-x-4">
-                    {!isEditing ? (
-                      <button
-                        type="button"
-                        onClick={() => setIsEditing(true)}
-                        className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                      >
-                        Edit Profile
-                      </button>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => setIsEditing(false)}
-                          className="text-gray-700 px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="submit"
-                          className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                        >
-                          Save Changes
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </form>
-              </div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleAvatarChange}
+              className="hidden"
+              accept="image/jpeg,image/png,image/gif"
+            />
+
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute bottom-0 right-0 p-2 bg-white rounded-full shadow-lg hover:bg-gray-100"
+            >
+              <Camera className="w-4 h-4" />
+            </button>
+          </div>
+
+          {user?.avatar && !imgError && (
+            <button
+              onClick={handleDeleteAvatar}
+              className="ml-4 p-2 text-red-600 hover:text-red-700"
+              title="Supprimer l'avatar"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+
+        <form onSubmit={handleProfileUpdate}>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Nom complet
+              </label>
+              <input
+                type="text"
+                value={userData.fullName}
+                onChange={(e) =>
+                  setUserData({ ...userData, fullName: e.target.value })
+                }
+                disabled={!isEditing}
+                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+              />
             </div>
 
-            <div className="mt-10 pt-6 border-t border-gray-200">
-              <div className="space-y-4">
-                <h2 className="text-lg font-medium text-red-600">
-                  Zone dangereuse
-                </h2>
-                <p className="text-sm text-gray-500">
-                  Une fois votre compte désactivé, toutes vos données seront
-                  inaccessibles. Cette action ne peut pas être annulée.
-                </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </label>
+              <input
+                type="email"
+                value={userData.email}
+                onChange={(e) =>
+                  setUserData({ ...userData, email: e.target.value })
+                }
+                disabled={!isEditing}
+                className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+              />
+            </div>
+
+            <div className="flex justify-end space-x-4 pt-4">
+              {!isEditing ? (
                 <button
-                  onClick={handleDeactivateAccount}
-                  className="inline-flex items-center px-4 py-2 border border-red-600 text-sm font-medium rounded-md text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 mr-2"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                  Désactiver mon compte
+                  Modifier
                 </button>
-              </div>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditing(false);
+                      setUserData({
+                        fullName: user?.fullName || '',
+                        email: user?.email || '',
+                      });
+                    }}
+                    className="px-4 py-2 border rounded hover:bg-gray-100"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    Enregistrer
+                  </button>
+                </>
+              )}
             </div>
           </div>
-        </div>
+        </form>
+      </div>
+
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-xl font-semibold text-red-600 mb-4">
+          Zone de danger
+        </h2>
+        <p className="text-gray-600 mb-4">
+          La désactivation de votre compte est irréversible. Toutes vos données
+          seront supprimées.
+        </p>
+        <button
+          onClick={handleDeactivateAccount}
+          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+        >
+          Désactiver mon compte
+        </button>
       </div>
     </div>
   );

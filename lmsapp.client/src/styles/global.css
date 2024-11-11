@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Styles de base personnalisés */
+@layer base {
+    body {
+        @apply bg-gray-50 text-gray-900;
+    }
+
+    h1 {
+        @apply text-2xl font-bold;
+    }
+
+    h2 {
+        @apply text-xl font-semibold;
+    }
+}
+
+/* Composants personnalisés réutilisables */
+@layer components {
+    .btn {
+        @apply px-4 py-2 rounded-lg font-medium transition-colors;
+    }
+
+    .btn-primary {
+        @apply btn bg-blue-600 text-white hover:bg-blue-700;
+    }
+
+    .btn-secondary {
+        @apply btn bg-gray-200 text-gray-800 hover:bg-gray-300;
+    }
+
+    .input {
+        @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500;
+    }
+}
+
+/* Utilitaires personnalisés */
+@layer utilities {
+    .text-shadow {
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    }
+}

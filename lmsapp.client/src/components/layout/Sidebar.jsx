@@ -1,6 +1,6 @@
 // src/components/Sidebar.js
-import { useAuth } from '../contexts/AuthContext';
-import NavLinks from './Navigation/NavLinks';
+import { useAuth } from '../../contexts/AuthContext';
+import NavLinks from './NavLinks';
 
 const Sidebar = () => {
   const { user } = useAuth();

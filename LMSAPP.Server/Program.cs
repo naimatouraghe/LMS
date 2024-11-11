@@ -195,6 +195,8 @@ namespace LMSAPP.Server
             app.UseStaticFiles();
             app.UseSpaStaticFiles();
             app.MapControllers();
+            // Ajoutez ceci pour regrouper vos endpoints sous /api
+            app.UsePathBase("/api");
 
             app.MapFallbackToFile("/index.html"); // For client-side routing (if applicable)
 

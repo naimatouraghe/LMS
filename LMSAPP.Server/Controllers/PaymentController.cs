@@ -56,11 +56,9 @@ namespace LMSAPP.Server.Controllers
         }
 
         [Authorize]
-        [HttpGet("purchases")]
-        public async Task<IResult> GetUserPurchases()
+        [HttpGet("{userId}/purchases")]
+        public async Task<IResult> GetUserPurchases(string userId)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
-                ?? throw new UnauthorizedAccessException("User not authenticated");
             return await _paymentService.GetUserPurchases(userId);
         }
 

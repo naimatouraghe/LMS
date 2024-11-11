@@ -1,0 +1,20 @@
+/* Styles spécifiques à la mise en page */
+.container {
+    @apply mx-auto px-4 max-w-7xl;
+}
+
+.main-layout {
+    @apply min-h-screen flex flex-col;
+}
+
+.header {
+    @apply sticky top-0 z-50 bg-white shadow;
+}
+
+.footer {
+    @apply mt-auto bg-gray-800 text-white;
+}
+
+.sidebar {
+    @apply fixed inset-y-0 left-0 w-64 bg-white shadow-lg transform transition-transform duration-200;
+}

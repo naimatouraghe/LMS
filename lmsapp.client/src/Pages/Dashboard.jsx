@@ -1,63 +1,85 @@
 import { useState, useEffect } from 'react';
 import { CourseCard } from '@/components/CourseCard';
 import { Clock, CheckCircle } from 'lucide-react';
-import NavbarDesktop from '@/Components/NavbarDesktop';
+import NavbarDesktop from '../components/layout/NavbarDesktop';
 import Login from '@/Pages/Login';
-import axios from 'axios';
 import { useAuth } from '@/contexts/AuthContext';
+import { paymentApi } from '@/services/api/paymentApi';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 
 const Dashboard = () => {
-  const [userCourses, setUserCourses] = useState([]);
+  const [purchasedCourses, setPurchasedCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
-    const fetchUserCourses = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const response = await axios.get(
-          `https://localhost:7001/api/Course/Users/${user.id}/purchased`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+    const fetchPurchasedCourses = async () => {
+      if (!user?.id) {
+        setLoading(false);
+        return;
+      }
 
-        setUserCourses(response.data);
+      try {
+        setLoading(true);
+        setError(null);
+        const courses = await paymentApi.getUserPurchases(user.id);
+        setPurchasedCourses(
+          Array.isArray(courses) ? courses : courses?.value || []
+        );
       } catch (error) {
-        console.error('Erreur lors du chargement des cours:', error);
+        console.error('Erreur lors de la récupération des cours:', error);
+        setError(
+          'Impossible de charger vos cours. Veuillez réessayer plus tard.'
+        );
       } finally {
         setLoading(false);
       }
     };
 
-    if (user) {
-      fetchUserCourses();
-    } else {
-      setLoading(false);
-    }
-  }, [user]);
+    fetchPurchasedCourses();
+  }, [user?.id]); // Dépendance explicite à user.id
 
+  // Redirection si non authentifié
   if (!isAuthenticated) {
     return <Login />;
   }
 
-  // Calculer les statistiques
-  const completedCourses = userCourses.filter(
-    (course) => course.isCompleted || course.progress === 100
-  );
-
-  const inProgressCourses = userCourses.filter(
-    (course) =>
-      !course.isCompleted && course.progress > 0 && course.progress < 100
-  );
-
+  // Affichage du chargement
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-sky-700"></div>
+        <LoadingSpinner size="xl" color="primary" />
       </div>
     );
   }
+
+  // Affichage de l'erreur
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <p className="text-red-500 mb-4">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          Réessayer
+        </button>
+      </div>
+    );
+  }
+
+  const completedCourses = purchasedCourses.filter(
+    (course) => course.progress === 100
+  );
+
+  const inProgressCourses = purchasedCourses.filter(
+    (course) => course.progress > 0 && course.progress < 100
+  );
+
+  const notStartedCourses = purchasedCourses.filter(
+    (course) => course.progress === 0
+  );
 
   return (
     <>
@@ -65,7 +87,6 @@ const Dashboard = () => {
         <NavbarDesktop />
       </div>
       <div className="p-1 m-5">
-        {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
           <div className="bg-slate-100 rounded-lg p-4 flex items-center gap-4">
             <div className="bg-sky-100 p-2 rounded-full">
@@ -92,35 +113,27 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* All Courses Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {inProgressCourses.map((course) => (
+          {[
+            ...inProgressCourses,
+            ...completedCourses,
+            ...notStartedCourses,
+          ].map((course) => (
             <CourseCard
               key={course.id}
               course={course}
               progress={course.progress}
-              currentUserId={user?.id}
             />
           ))}
-          {completedCourses.map((course) => (
-            <CourseCard
-              key={course.id}
-              course={course}
-              progress={100}
-              currentUserId={user?.id}
-            />
-          ))}
-          {userCourses
-            .filter((course) => !course.isCompleted && course.progress === 0)
-            .map((course) => (
-              <CourseCard
-                key={course.id}
-                course={course}
-                progress={0}
-                currentUserId={user?.id}
-              />
-            ))}
         </div>
+
+        {purchasedCourses.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-slate-600">
+              Vous n'avez pas encore acheté de cours
+            </p>
+          </div>
+        )}
       </div>
     </>
   );

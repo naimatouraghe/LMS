@@ -1,15 +1,17 @@
 import axios from 'axios';
 
-const axiosInstance = axios.create({
+const instance = axios.create({
   baseURL: 'https://localhost:7001/api',
   headers: {
     'Content-Type': 'application/json',
+    Accept: 'application/json', // Ajout de l'en-tête Accept
   },
+  // Ajout de la configuration pour gérer les erreurs CORS
   withCredentials: true,
 });
 
 // Intercepteur pour les requêtes
-axiosInstance.interceptors.request.use(
+instance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -23,15 +25,16 @@ axiosInstance.interceptors.request.use(
 );
 
 // Intercepteur pour les réponses
-axiosInstance.interceptors.response.use(
+instance.interceptors.response.use(
   (response) => {
-    console.log('API Response:', response.data); // Debug log
     return response;
   },
   (error) => {
-    console.error('API Error:', error.response?.data || error.message);
+    if (error.response?.status === 404) {
+      console.error('API endpoint not found:', error.config.url);
+    }
     return Promise.reject(error);
   }
 );
 
-export default axiosInstance;
+export default instance;

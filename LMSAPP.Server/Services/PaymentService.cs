@@ -198,46 +198,34 @@ namespace LMSAPP.Server.Services
         {
             try
             {
+                _logger.LogInformation("Getting purchases for user {UserId}", userId);
+
                 var purchases = await _context.Purchases
                     .Where(p => p.UserId == userId)
                     .Include(p => p.Course)
-                    .Select(p => new PurchaseDto
+                        .ThenInclude(c => c.Category)
+                    .Include(p => p.Course.Chapters)
+                    .Select(p => new
                     {
-                        Id = p.Id,
-                        UserId = p.UserId,
-                        CourseId = p.CourseId,
-                        Course = new CourseDto
+                        Id = p.Course.Id,
+                        Title = p.Course.Title,
+                        Description = p.Course.Description,
+                        ImageUrl = p.Course.ImageUrl,
+                        Price = p.Course.Price,
+                        CategoryId = p.Course.CategoryId,
+                        Category = new
                         {
-                            Id = p.Course.Id,
-                            Title = p.Course.Title,
-                            Description = p.Course.Description,
-                            UserId = p.Course.UserId,
-                            Purchases = new List<PurchaseDto>(),
-                            Chapters = new List<ChapterDto>(),
-                            Category = new CategoryDto
-                            {
-                                Id = p.Course.Category.Id,
-                                Name = p.Course.Category.Name,
-                                Courses = new List<CourseDto>()
-                            },
-                            Attachments = new List<AttachmentDto>(),
-
-
+                            Id = p.Course.Category.Id,
+                            Name = p.Course.Category.Name
                         },
+                        Progress = 0, // On ajoutera le calcul de progression plus tard
                         CreatedAt = p.CreatedAt,
-                        UpdatedAt = p.UpdatedAt,
-                        User = new UserDto
-                        {
-                            Id = p.User.Id,
-                            FullName = p.User.FullName,
-                            Email = p.User.Email,
-                            Purchases = new List<PurchaseDto>(),
-                            UserProgress = new List<UserProgressDto>()
-                        }
+                        UpdatedAt = p.UpdatedAt
                     })
                     .ToListAsync();
 
-                return Results.Ok(purchases);
+                _logger.LogInformation("Found {Count} purchases", purchases.Count);
+                return Results.Ok(new { value = purchases });
             }
             catch (Exception ex)
             {

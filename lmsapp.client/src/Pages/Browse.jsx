@@ -1,21 +1,14 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import axiosInstance from '@/utils/axios';
 import { useAuth } from '@/contexts/AuthContext';
-import NavbarDesktop from '@/components/NavbarDesktop';
+import { courseApi } from '@/services/api/courseApi';
+import NavbarDesktop from '@/components/layout/NavbarDesktop';
 import { CourseCard } from '@/components/CourseCard';
 import { Filters } from '@/components/Filters';
 import { iconMap } from '@/constants/filters';
-
-// Constantes pour les routes API
-const API_ROUTES = {
-  COURSES: '/Course',
-  PURCHASED_COURSES: (userId) => `/Course/${userId}/purchased`,
-  CATEGORIES: '/Course/categories',
-};
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 
 const Browse = () => {
   const { isAuthenticated, user } = useAuth();
-  // États existants
   const [courses, setCourses] = useState([]);
   const [filteredCourses, setFilteredCourses] = useState([]);
   const [userProgress, setUserProgress] = useState({});
@@ -31,110 +24,81 @@ const Browse = () => {
   const [selectedLevel, setSelectedLevel] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Fonction de tri mémorisée
-  const sortCourses = useCallback((coursesToSort, progress) => {
-    if (!Array.isArray(coursesToSort)) {
-      console.error('coursesToSort is not an array:', coursesToSort);
-      return [];
-    }
+  // Séparation du chargement
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isPurchasedLoading, setIsPurchasedLoading] = useState(false);
 
-    return [...coursesToSort].sort((a, b) => {
-      const aIsPurchased = progress[a.id] !== undefined;
-      const bIsPurchased = progress[b.id] !== undefined;
-
-      if (aIsPurchased === bIsPurchased) {
-        if (aIsPurchased) {
-          return progress[b.id] - progress[a.id];
-        }
-        return 0;
-      }
-      return aIsPurchased ? 1 : -1;
-    });
-  }, []);
-
-  // Chargement initial des données
+  // Chargement initial des cours et catégories
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
         setIsLoading(true);
 
-        const [coursesResponse, categoriesResponse] = await Promise.all([
-          axiosInstance.get(API_ROUTES.COURSES),
-          axiosInstance.get('/Course/categories'),
+        // Charger d'abord les cours achetés si l'utilisateur est connecté
+        let purchasedCoursesIds = [];
+        if (isAuthenticated) {
+          const purchasedCoursesData = await courseApi.getPurchasedCourses();
+          // Vérifier si purchasedCoursesData est un tableau
+          const purchasedCourses = Array.isArray(purchasedCoursesData)
+            ? purchasedCoursesData
+            : purchasedCoursesData?.courses || [];
+
+          purchasedCoursesIds = purchasedCourses.map((course) => course.id);
+          console.log('Cours achetés:', purchasedCoursesIds); // Pour le débogage
+        }
+
+        // Charger tous les cours et les catégories
+        const [coursesData, categoriesData] = await Promise.all([
+          courseApi.getCourses({
+            searchTerm: searchQuery,
+            category: selectedCategory,
+          }),
+          courseApi.getCategories(),
         ]);
 
-        console.log('Categories API response:', categoriesResponse.data);
-
-        const categoriesData = Array.isArray(categoriesResponse.data)
-          ? categoriesResponse.data
-          : categoriesResponse.data?.value || [];
-
-        const categoriesWithIcons = categoriesData.map((category) => ({
-          id: category.id,
-          name: category.name,
-          countryCode: iconMap[category.name] || 'US',
-        }));
-
-        console.log('Processed categories:', categoriesWithIcons);
-        setCategories(categoriesWithIcons);
-
-        let progressMap = {};
-
-        if (isAuthenticated && user?.id) {
-          try {
-            const purchasedResponse = await axiosInstance.get(
-              API_ROUTES.PURCHASED_COURSES(user.id)
-            );
-
-            console.log('Purchased response:', purchasedResponse.data);
-
-            const purchasedCourses = Array.isArray(purchasedResponse.data)
-              ? purchasedResponse.data
-              : [];
-
-            purchasedCourses.forEach((course) => {
-              progressMap[course.id] = course.progress || 0;
-            });
-          } catch (err) {
-            console.error('Error fetching purchased courses:', err);
-          }
-        }
-
-        setUserProgress(progressMap);
-
-        const coursesData = Array.isArray(coursesResponse.data)
-          ? coursesResponse.data
+        // Filtrer les cours achetés
+        const availableCourses = Array.isArray(coursesData)
+          ? coursesData.filter(
+              (course) => !purchasedCoursesIds.includes(course.id)
+            )
           : [];
 
-        const sortedCourses = sortCourses(coursesData, progressMap);
-        setCourses(sortedCourses);
-        setFilteredCourses(sortedCourses);
+        console.log('Cours disponibles:', availableCourses.length); // Pour le débogage
+
+        setCourses(availableCourses);
+        setFilteredCourses(availableCourses);
+
+        setCategories(
+          (Array.isArray(categoriesData) ? categoriesData : []).map(
+            (category) => ({
+              id: category.id,
+              name: category.name,
+              countryCode: iconMap[category.name] || 'US',
+            })
+          )
+        );
       } catch (err) {
-        console.error('Error fetching data:', err);
-        if (err.response) {
-          console.error('API Error response:', err.response.data);
-        }
+        console.error('Error fetching initial data:', err);
         setError('Erreur lors du chargement des données');
       } finally {
+        setIsInitialLoad(false);
         setIsLoading(false);
       }
     };
 
     fetchInitialData();
-  }, [sortCourses, isAuthenticated, user]);
+  }, [searchQuery, selectedCategory, isAuthenticated]);
 
-  // Effet de filtrage
+  // Application des filtres
   useEffect(() => {
     if (!courses.length) return;
 
     const applyFilters = async () => {
       try {
         setIsFiltering(true);
+        let filteredData = courses;
 
-        // Commencer par filtrer les cours non achetés
-        let filteredData = courses.filter((course) => !userProgress[course.id]);
-
-        // Filtre par catégorie (langue)
+        // Filtre par catégorie
         if (selectedCategory) {
           filteredData = filteredData.filter(
             (course) => course.category?.name === selectedCategory
@@ -142,40 +106,19 @@ const Browse = () => {
         }
 
         // Filtre par prix
-        if (selectedPrice && selectedPrice !== 'all') {
+        if (selectedPrice !== 'all') {
           filteredData = filteredData.filter((course) => {
-            const price = parseFloat(course.price);
-            switch (selectedPrice) {
-              case '<30':
-                return price < 30;
-              case '30-50':
-                return price >= 30 && price <= 50;
-              case '50-70':
-                return price > 50 && price <= 70;
-              case '70-90':
-                return price > 70 && price <= 90;
-              case '>90':
-                return price > 90;
-              default:
-                return true;
-            }
+            if (selectedPrice === 'free') return course.price === 0;
+            if (selectedPrice === 'paid') return course.price > 0;
+            return true;
           });
         }
 
         // Filtre par niveau
-        if (selectedLevel && selectedLevel !== 'all') {
-          filteredData = filteredData.filter((course) => {
-            // Convertir le niveau numérique en niveau CEFR
-            const levelMap = {
-              0: 'A1',
-              1: 'A2',
-              2: 'B1',
-              3: 'B2',
-              4: 'C1',
-              5: 'C2',
-            };
-            return levelMap[course.level] === selectedLevel;
-          });
+        if (selectedLevel !== 'all') {
+          filteredData = filteredData.filter(
+            (course) => course.level === selectedLevel
+          );
         }
 
         // Filtre par recherche
@@ -183,8 +126,8 @@ const Browse = () => {
           const query = searchQuery.toLowerCase();
           filteredData = filteredData.filter(
             (course) =>
-              course.title?.toLowerCase().includes(query) ||
-              course.description?.toLowerCase().includes(query)
+              course.title.toLowerCase().includes(query) ||
+              course.description.toLowerCase().includes(query)
           );
         }
 
@@ -192,14 +135,14 @@ const Browse = () => {
         if (selectedSort) {
           filteredData.sort((a, b) => {
             switch (selectedSort) {
-              case 'recent':
-                return new Date(b.createdAt) - new Date(a.createdAt);
-              case 'oldest':
-                return new Date(a.createdAt) - new Date(b.createdAt);
               case 'price-asc':
-                return parseFloat(a.price) - parseFloat(b.price);
+                return a.price - b.price;
               case 'price-desc':
-                return parseFloat(b.price) - parseFloat(a.price);
+                return b.price - a.price;
+              case 'title-asc':
+                return a.title.localeCompare(b.title);
+              case 'title-desc':
+                return b.title.localeCompare(a.title);
               default:
                 return 0;
             }
@@ -207,8 +150,8 @@ const Browse = () => {
         }
 
         setFilteredCourses(filteredData);
-      } catch (err) {
-        console.error('Error applying filters:', err);
+      } catch (error) {
+        console.error('Error applying filters:', error);
       } finally {
         setIsFiltering(false);
       }
@@ -222,10 +165,9 @@ const Browse = () => {
     selectedSort,
     searchQuery,
     courses,
-    userProgress,
   ]);
 
-  // Handlers des filtres mémorisés (inchangés)
+  // Handlers des filtres
   const handleCategoryChange = useCallback((category) => {
     setSelectedCategory(category);
   }, []);
@@ -289,10 +231,10 @@ const Browse = () => {
     [filteredCourses, userProgress]
   );
 
-  if (isLoading) {
+  if (isInitialLoad) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-900" />
+        <LoadingSpinner size="lg" color="primary" />
       </div>
     );
   }
@@ -313,19 +255,7 @@ const Browse = () => {
         </h1>
 
         <div className="mb-8">
-          <Filters
-            categories={categories}
-            selectedCategory={selectedCategory}
-            onSelectCategory={setSelectedCategory}
-            selectedPrice={selectedPrice}
-            onSelectPrice={setSelectedPrice}
-            selectedSort={selectedSort}
-            onSelectSort={setSelectedSort}
-            selectedLevel={selectedLevel}
-            onSelectLevel={setSelectedLevel}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-          />
+          <Filters {...filterProps} />
         </div>
 
         <div className="mb-6">
