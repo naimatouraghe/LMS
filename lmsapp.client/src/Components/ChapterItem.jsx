@@ -6,12 +6,13 @@ const ChapterItem = ({
   position,
   isPublished,
   isFree,
-  isLocked,
-  isCurrent,
   hasPurchased,
   onClick,
   isCompleted,
+  isCurrent,
 }) => {
+  const isLocked = !isFree && !hasPurchased;
+
   return (
     <button
       onClick={onClick}
@@ -20,14 +21,13 @@ const ChapterItem = ({
         {
           'text-emerald-700 bg-emerald-50': isCompleted === true,
           'bg-slate-100/80': isCurrent && !isCompleted,
-          'opacity-50 cursor-not-allowed': !isPublished,
+          'opacity-75': isLocked,
         }
       )}
-      disabled={!isPublished}
     >
       <div className="flex items-center gap-x-3 flex-1 min-w-0">
         <div className="flex-shrink-0">
-          {isCompleted === true ? (
+          {isCompleted ? (
             <CheckCircle className="h-5 w-5 text-emerald-700" />
           ) : (
             <>

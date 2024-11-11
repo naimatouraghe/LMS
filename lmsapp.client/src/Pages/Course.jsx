@@ -7,6 +7,7 @@ import {
   AlertCircle,
   Menu,
   X,
+  AlertTriangle,
 } from 'lucide-react';
 import { courseApi } from '@/services/api/courseApi';
 import { progressApi } from '@/services/api/progressApi';
@@ -168,6 +169,181 @@ const Course = () => {
     return chapter.isFree || hasPurchased;
   };
 
+  const renderChapterContent = () => {
+    if (!currentChapter) return null;
+
+    const isLocked = !currentChapter.isFree && !hasPurchased;
+
+    return (
+      <>
+        {isLocked && (
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <AlertTriangle className="h-5 w-5 text-yellow-400" />
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-yellow-700">
+                  Vous devez acheter ce cours pour regarder ce chapitre.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="relative aspect-video">
+          {isLocked ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90 text-white">
+              <Lock className="h-12 w-12 mb-2" />
+              <p className="text-center px-4">
+                Vous devez acheter ce cours pour accéder à ce chapitre
+              </p>
+              <button
+                onClick={() => {
+                  paymentApi
+                    .createCheckoutSession(courseId)
+                    .then((response) => {
+                      window.location.href = response.url;
+                    })
+                    .catch((error) => {
+                      toast.error(
+                        'Erreur lors de la redirection vers le paiement'
+                      );
+                    });
+                }}
+                className="mt-4 px-4 py-2 bg-sky-700 hover:bg-sky-800 rounded-md"
+              >
+                Acheter pour {course?.price}€
+              </button>
+            </div>
+          ) : null}
+          <video
+            className="h-full w-full"
+            src={currentChapter.videoUrl}
+            controls
+            onEnded={handleChapterComplete}
+          />
+        </div>
+
+        {isLocked && (
+          <div className="fixed top-0 left-0 right-0 bg-yellow-100 p-4 text-yellow-800 flex items-center justify-center">
+            <p className="text-sm">
+              Vous devez acheter ce cours pour accéder à ce chapitre.
+              <button
+                onClick={() => {
+                  paymentApi
+                    .createCheckoutSession(courseId)
+                    .then((response) => {
+                      window.location.href = response.url;
+                    })
+                    .catch((error) => {
+                      toast.error(
+                        'Erreur lors de la redirection vers le paiement'
+                      );
+                    });
+                }}
+                className="ml-2 underline hover:text-yellow-900"
+              >
+                Acheter maintenant
+              </button>
+            </p>
+          </div>
+        )}
+
+        <div className="p-6 flex flex-col gap-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold">{currentChapter.title}</h2>
+              <p className="text-sm text-slate-500">
+                Chapitre {currentChapter.position}
+                {currentChapter.isFree && ' (Gratuit)'}
+              </p>
+            </div>
+            <div className="flex items-center gap-x-4">
+              {!hasPurchased ? (
+                <button
+                  onClick={() => {
+                    paymentApi
+                      .createCheckoutSession(courseId)
+                      .then((response) => {
+                        window.location.href = response.url;
+                      })
+                      .catch((error) => {
+                        console.error(
+                          'Error creating checkout session:',
+                          error
+                        );
+                        toast.error(
+                          'Erreur lors de la redirection vers le paiement'
+                        );
+                      });
+                  }}
+                  className="px-4 py-2 bg-sky-700 text-white rounded-md hover:bg-sky-800 flex items-center gap-x-2"
+                >
+                  Acheter pour {course?.price}€
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleChapterComplete(currentChapter.id)}
+                  disabled={isChapterCompleted(currentChapter.id)}
+                  className={cn(
+                    'px-4 py-2 rounded-md flex items-center gap-x-2',
+                    isChapterCompleted(currentChapter.id)
+                      ? 'bg-emerald-700 text-white cursor-not-allowed'
+                      : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                  )}
+                >
+                  {isChapterCompleted(currentChapter.id) ? (
+                    <>
+                      <CheckCircle className="h-4 w-4" />
+                      Terminé
+                    </>
+                  ) : (
+                    'Marquer comme terminé'
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {!hasPurchased && !currentChapter.isFree && (
+            <div className="fixed top-0 left-0 right-0 bg-yellow-100 p-4 text-yellow-800 flex items-center justify-center">
+              <p className="text-sm">
+                Vous devez acheter ce cours pour accéder à ce chapitre.
+                <button
+                  onClick={() => {
+                    paymentApi
+                      .createCheckoutSession(courseId)
+                      .then((response) => {
+                        window.location.href = response.url;
+                      })
+                      .catch((error) => {
+                        console.error(
+                          'Error creating checkout session:',
+                          error
+                        );
+                        toast.error(
+                          'Erreur lors de la redirection vers le paiement'
+                        );
+                      });
+                  }}
+                  className="ml-2 underline hover:text-yellow-900"
+                >
+                  Acheter maintenant
+                </button>
+              </p>
+            </div>
+          )}
+
+          <div>
+            <h3 className="text-lg font-semibold mb-2">Description :</h3>
+            <p className="text-slate-600">{currentChapter.description}</p>
+          </div>
+        </div>
+      </>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -194,8 +370,8 @@ const Course = () => {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header fixe */}
-      <div className="sticky top-0 z-50 p-4 border-b flex items-center justify-between bg-white">
+      {/* Header avec taille normale */}
+      <div className="sticky top-0 z-50 px-4 py-3 flex items-center justify-between bg-white border-b">
         <div className="flex items-center gap-x-2">
           <ArrowLeft
             className="h-5 w-5 cursor-pointer hover:text-sky-700"
@@ -220,61 +396,30 @@ const Course = () => {
         </button>
       </div>
 
-      {/* Contenu principal avec navigation mobile */}
       <div className="flex-1 overflow-hidden">
         <div className="h-full flex flex-col lg:grid lg:grid-cols-[300px_1fr]">
-          {/* Barre de navigation mobile */}
-          <div className="lg:hidden flex items-center justify-between p-2 bg-slate-50 border-b">
-            <button
-              onClick={() => setShowChapters((prev) => !prev)}
-              className="flex items-center gap-2 text-sm font-medium text-slate-600"
-            >
-              <Menu className="h-5 w-5" />
-              {currentChapter ? (
-                <span className="truncate max-w-[200px]">
-                  {currentChapter.title}
-                </span>
-              ) : (
-                'Sélectionner un chapitre'
-              )}
-            </button>
-          </div>
-
-          {/* Liste des chapitres (mobile: drawer, desktop: sidebar) */}
+          {/* Sidebar collée directement sous le header */}
           <div
             className={cn(
-              'fixed inset-0 z-50 bg-white transform transition-transform duration-300 lg:relative lg:transform-none',
-              'lg:flex lg:h-full lg:flex-col lg:border-r lg:border-slate-200',
+              'fixed inset-y-0 left-0 z-40 bg-white w-[300px] transform transition-transform duration-300 lg:relative lg:transform-none overflow-y-auto border-r',
               showChapters ? 'translate-x-0' : '-translate-x-full'
             )}
           >
-            {/* En-tête du drawer mobile */}
-            <div className="lg:hidden flex items-center justify-between p-4 border-b">
-              <h2 className="font-semibold">Chapitres du cours</h2>
-              <button
-                onClick={() => setShowChapters(false)}
-                className="p-2 hover:bg-slate-100 rounded-full"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Liste des chapitres */}
-            <div className="flex-1 overflow-y-auto">
+            {/* Liste des chapitres sans margin ni padding */}
+            <div className="flex flex-col -mt-[1px]">
               {chapters.map((chapter) => (
                 <ChapterItem
                   key={chapter.id}
-                  {...chapter}
-                  isCurrent={currentChapter?.id === chapter.id}
+                  title={chapter.title}
+                  position={chapter.position}
+                  isPublished={chapter.isPublished}
+                  isFree={chapter.isFree}
+                  hasPurchased={hasPurchased}
                   isCompleted={isChapterCompleted(chapter.id)}
+                  isCurrent={currentChapter?.id === chapter.id}
                   onClick={() => {
-                    if (
-                      chapter.isPublished &&
-                      (chapter.isFree || hasPurchased)
-                    ) {
-                      setCurrentChapter(chapter);
-                      setShowChapters(false); // Fermer le drawer sur mobile
-                    }
+                    setCurrentChapter(chapter);
+                    setShowChapters(false);
                   }}
                 />
               ))}
@@ -284,136 +429,7 @@ const Course = () => {
           {/* Contenu principal */}
           <div className="flex-1 overflow-y-auto">
             {currentChapter ? (
-              <>
-                {canAccessChapter(currentChapter) ? (
-                  <>
-                    <div className="relative aspect-video bg-slate-900">
-                      <video
-                        className="h-full w-full"
-                        src={currentChapter.videoUrl}
-                        controls
-                        onEnded={handleChapterComplete}
-                      />
-                    </div>
-
-                    <div className="p-6 flex flex-col gap-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h2 className="text-2xl font-bold">
-                            {currentChapter.title}
-                          </h2>
-                          <p className="text-sm text-slate-500">
-                            Chapitre {currentChapter.position}
-                            {currentChapter.isFree && ' (Gratuit)'}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-x-4">
-                          {!hasPurchased ? (
-                            <button
-                              onClick={() => {
-                                paymentApi
-                                  .createCheckoutSession(courseId)
-                                  .then((response) => {
-                                    window.location.href = response.url;
-                                  })
-                                  .catch((error) => {
-                                    console.error(
-                                      'Error creating checkout session:',
-                                      error
-                                    );
-                                    toast.error(
-                                      'Erreur lors de la redirection vers le paiement'
-                                    );
-                                  });
-                              }}
-                              className="px-4 py-2 bg-sky-700 text-white rounded-md hover:bg-sky-800 flex items-center gap-x-2"
-                            >
-                              Acheter pour {course?.price}€
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() =>
-                                handleChapterComplete(currentChapter.id)
-                              }
-                              disabled={isChapterCompleted(currentChapter.id)}
-                              className={cn(
-                                'px-4 py-2 rounded-md flex items-center gap-x-2',
-                                isChapterCompleted(currentChapter.id)
-                                  ? 'bg-emerald-700 text-white cursor-not-allowed'
-                                  : 'bg-emerald-600 text-white hover:bg-emerald-700'
-                              )}
-                            >
-                              {isChapterCompleted(currentChapter.id) ? (
-                                <>
-                                  <CheckCircle className="h-4 w-4" />
-                                  Terminé
-                                </>
-                              ) : (
-                                'Marquer comme terminé'
-                              )}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      {!hasPurchased && !currentChapter.isFree && (
-                        <div className="fixed top-0 left-0 right-0 bg-yellow-100 p-4 text-yellow-800 flex items-center justify-center">
-                          <p className="text-sm">
-                            Vous devez acheter ce cours pour accéder à ce
-                            chapitre.
-                            <button
-                              onClick={() => {
-                                paymentApi
-                                  .createCheckoutSession(courseId)
-                                  .then((response) => {
-                                    window.location.href = response.url;
-                                  })
-                                  .catch((error) => {
-                                    console.error(
-                                      'Error creating checkout session:',
-                                      error
-                                    );
-                                    toast.error(
-                                      'Erreur lors de la redirection vers le paiement'
-                                    );
-                                  });
-                              }}
-                              className="ml-2 underline hover:text-yellow-900"
-                            >
-                              Acheter maintenant
-                            </button>
-                          </p>
-                        </div>
-                      )}
-
-                      <div>
-                        <h3 className="text-lg font-semibold mb-2">
-                          Description :
-                        </h3>
-                        <p className="text-slate-600">
-                          {currentChapter.description}
-                        </p>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full">
-                    <Lock className="h-16 w-16 text-slate-400 mb-4" />
-                    <h2 className="text-xl font-semibold mb-2">
-                      Chapitre Verrouillé
-                    </h2>
-                    <p className="text-slate-600 mb-4">
-                      Ce chapitre est réservé aux étudiants inscrits
-                    </p>
-                    <button
-                      onClick={() => navigate(`/courses/${courseId}`)}
-                      className="px-4 py-2 bg-sky-700 text-white rounded-md hover:bg-sky-800"
-                    >
-                      S'inscrire au cours
-                    </button>
-                  </div>
-                )}
-              </>
+              renderChapterContent()
             ) : (
               <div className="flex flex-col items-center justify-center h-full">
                 <AlertCircle className="h-16 w-16 text-slate-400 mb-4" />
