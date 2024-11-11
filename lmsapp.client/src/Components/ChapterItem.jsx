@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 
 const ChapterItem = ({
   title,
+  position,
   isPublished,
   isFree,
   isLocked,
@@ -15,7 +16,7 @@ const ChapterItem = ({
     <button
       onClick={onClick}
       className={cn(
-        'flex w-full items-center gap-x-3 text-sm font-medium p-4 hover:bg-slate-100/80 transition-all border-b',
+        'flex w-full items-center p-4 hover:bg-slate-100/80 transition-all border-b',
         {
           'text-emerald-700 bg-emerald-50': isCompleted === true,
           'bg-slate-100/80': isCurrent && !isCompleted,
@@ -24,24 +25,38 @@ const ChapterItem = ({
       )}
       disabled={!isPublished}
     >
-      <div className="flex items-center gap-x-2 flex-1">
-        {isCompleted === true ? (
-          <CheckCircle className="h-4 w-4 text-emerald-700" />
-        ) : (
-          <>
-            {isLocked ? (
-              <Lock className="h-4 w-4 text-slate-500" />
-            ) : (
-              <PlayCircle
-                className={cn(
-                  'h-4 w-4',
-                  isCurrent ? 'text-slate-700' : 'text-slate-500'
-                )}
-              />
+      <div className="flex items-center gap-x-3 flex-1 min-w-0">
+        <div className="flex-shrink-0">
+          {isCompleted === true ? (
+            <CheckCircle className="h-5 w-5 text-emerald-700" />
+          ) : (
+            <>
+              {isLocked ? (
+                <Lock className="h-5 w-5 text-slate-500" />
+              ) : (
+                <PlayCircle
+                  className={cn(
+                    'h-5 w-5',
+                    isCurrent ? 'text-slate-700' : 'text-slate-500'
+                  )}
+                />
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-x-2">
+            <span className="text-sm font-medium truncate">
+              {position}. {title}
+            </span>
+            {isFree && (
+              <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">
+                Gratuit
+              </span>
             )}
-          </>
-        )}
-        <span>{title}</span>
+          </div>
+        </div>
       </div>
     </button>
   );
