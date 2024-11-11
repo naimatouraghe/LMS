@@ -57,9 +57,14 @@ export const CourseCard = ({ course, progress }) => {
       {/* Contenu */}
       <div className="flex flex-col p-4">
         {/* Titre */}
-        <h3 className="text-lg font-medium text-slate-700 mb-2">
-          {course.title}
-        </h3>
+        <div className="relative group/title">
+          <h3 className="text-lg font-medium text-slate-700 mb-2 truncate whitespace-nowrap overflow-hidden">
+            {course.title}
+          </h3>
+          <div className="absolute hidden group-hover/title:block z-50 bg-slate-800 text-white text-sm rounded-md py-1 px-2 -top-8 left-0">
+            {course.title}
+          </div>
+        </div>
 
         {/* Catégorie */}
         <p className="text-sm text-slate-500 mb-2">{course.category?.name}</p>
