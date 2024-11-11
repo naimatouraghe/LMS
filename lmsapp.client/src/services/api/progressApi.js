@@ -22,12 +22,17 @@ export const progressApi = {
     return response.data;
   },
 
-  // Gestion des chapitres
   markChapterAsCompleted: async (chapterId) => {
-    const response = await axios.post(
-      `/Progress/chapters/${chapterId}/complete`
-    );
-    return response.data;
+    try {
+      const response = await axios.post(
+        `/Progress/chapters/${chapterId}/complete`
+      );
+      console.log('Response from marking chapter complete:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error details:', error.response?.data);
+      throw error;
+    }
   },
 
   unmarkChapterAsCompleted: async (chapterId) => {
@@ -39,8 +44,13 @@ export const progressApi = {
 
   // Progression des cours
   getCourseProgress: async (courseId) => {
-    const response = await axios.get(`/Progress/courses/${courseId}`);
-    return response.data;
+    try {
+      const response = await axios.get(`/Progress/courses/${courseId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching course progress:', error);
+      throw error;
+    }
   },
 
   getAllProgress: async () => {

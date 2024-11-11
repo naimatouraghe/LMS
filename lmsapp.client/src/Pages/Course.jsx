@@ -4,6 +4,9 @@ import { ArrowLeft, CheckCircle, Lock, AlertCircle } from 'lucide-react';
 import { courseApi } from '@/services/api/courseApi';
 import { progressApi } from '@/services/api/progressApi';
 import { toast } from 'react-hot-toast';
+import { paymentApi } from '@/services/api/paymentApi';
+import { cn } from '@/lib/utils';
+import axios from 'axios';
 
 import ChapterItem from '@/components/ChapterItem';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,6 +23,8 @@ const Course = () => {
   const [error, setError] = useState(null);
   const [completionPercentage, setCompletionPercentage] = useState(0);
   const [hasPurchased, setHasPurchased] = useState(false);
+  const [completedChapters, setCompletedChapters] = useState([]);
+  const [courseProgress, setCourseProgress] = useState(null);
 
   useEffect(() => {
     const fetchCourseData = async () => {
@@ -86,53 +91,73 @@ const Course = () => {
     fetchCourseData();
   }, [courseId, user?.id]);
 
-  const handleChapterComplete = async () => {
-    if (!user?.id) {
-      toast.error('Vous devez être connecté pour suivre votre progression');
-      return;
-    }
+  useEffect(() => {
+    const loadProgress = async () => {
+      if (!user || !courseId) return;
+
+      try {
+        const result = await progressApi.getCourseProgress(courseId);
+        console.log('Progression initiale chargée:', result);
+
+        if (result?.progress) {
+          // Vérifier si nous avons des chapitres avec une progression
+          const completedIds = result.progress
+            .filter((p) => p.isCompleted === true)
+            .map((p) => p.chapterId);
+
+          console.log('Chapitres réellement complétés:', completedIds);
+          setCompletedChapters(completedIds);
+          setCompletionPercentage(result.completionPercentage || 0);
+          setCourseProgress(result);
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement de la progression:', error);
+      }
+    };
+
+    loadProgress();
+  }, [courseId, user]);
+
+  const handleChapterComplete = async (chapterId) => {
+    if (!user || !courseId) return;
 
     try {
-      await progressApi.markChapterAsCompleted(currentChapter.id);
+      const result = await progressApi.markChapterAsCompleted(chapterId);
+      console.log('Résultat du marquage:', result);
 
-      setUserProgress((prev) => [
-        ...prev.filter((p) => p.chapterId !== currentChapter.id),
-        { chapterId: currentChapter.id, isCompleted: true },
-      ]);
+      if (result) {
+        // Charger la progression mise à jour
+        const updatedProgress = await progressApi.getCourseProgress(courseId);
 
-      // Mettre à jour le pourcentage de complétion
-      const newPercentage = await progressApi.getCourseCompletionPercentage(
-        courseId
-      );
-      setCompletionPercentage(newPercentage.value);
+        if (updatedProgress?.progress) {
+          // Mettre à jour avec les nouveaux chapitres complétés
+          const completedIds = updatedProgress.progress
+            .filter((p) => p.isCompleted === true)
+            .map((p) => p.chapterId);
 
-      toast.success('Chapitre terminé !');
-
-      // Passer au chapitre suivant
-      const currentIndex = chapters.findIndex(
-        (ch) => ch.id === currentChapter.id
-      );
-      const nextChapter = chapters[currentIndex + 1];
-      if (
-        nextChapter &&
-        nextChapter.isPublished &&
-        (nextChapter.isFree || hasPurchased)
-      ) {
-        setCurrentChapter(nextChapter);
-        toast.success('Passage au chapitre suivant');
+          setCompletedChapters(completedIds);
+          setCompletionPercentage(updatedProgress.completionPercentage);
+          setCourseProgress(updatedProgress);
+        }
       }
+
+      toast.success('Progression sauvegardée');
     } catch (error) {
-      console.error('Error completing chapter:', error);
-      toast.error('Erreur lors de la validation du chapitre');
+      console.error('Erreur lors de la sauvegarde:', error);
+      toast.error('Erreur lors de la sauvegarde');
     }
+  };
+
+  const isChapterCompleted = (chapterId) => {
+    // Vérifier dans courseProgress si le chapitre est marqué comme complété
+    const chapterProgress = courseProgress?.progress?.find(
+      (p) => p.chapterId === chapterId
+    );
+    return chapterProgress?.isCompleted === true;
   };
 
   const canAccessChapter = (chapter) => {
     return chapter.isFree || hasPurchased;
-  };
-
-  const isChapterCompleted = (chapterId) => {
-    return userProgress.some((p) => p.chapterId === chapterId && p.isCompleted);
   };
 
   if (isLoading) {
@@ -173,7 +198,7 @@ const Course = () => {
         <div className="flex items-center gap-x-4">
           {user?.id && (
             <div className="text-sm text-slate-600">
-              Progression : {completionPercentage}%
+              Progression : {courseProgress?.completionPercentage || 0}%
             </div>
           )}
           <button
@@ -189,46 +214,37 @@ const Course = () => {
       <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] h-[calc(100%-73px)]">
         {/* Sidebar */}
         <div className="hidden lg:flex h-full flex-col border-r border-slate-200 bg-white">
-          <div className="p-4 border-b">
-            <h2 className="text-xl font-semibold">{course?.title}</h2>
-            <p className="text-sm text-slate-500 mt-2">
-              {chapters.length} chapitres
-              {user?.id && ` • ${completionPercentage}% terminé`}
-            </p>
-          </div>
-
           {/* Chapters List */}
           <div className="flex-1 overflow-y-auto">
             <div className="flex flex-col">
-              {chapters.map((chapter) => (
-                <ChapterItem
-                  key={chapter.id}
-                  title={chapter.title}
-                  position={chapter.position}
-                  isPublished={chapter.isPublished}
-                  isFree={chapter.isFree}
-                  isLocked={!chapter.isFree && !hasPurchased}
-                  isCurrent={currentChapter?.id === chapter.id}
-                  hasPurchased={hasPurchased}
-                  onClick={() => {
-                    console.log('Chapter clicked:', {
-                      hasPurchased,
-                      isFree: chapter.isFree,
-                      isPublished: chapter.isPublished,
-                    });
-                    if (
-                      chapter.isPublished &&
-                      (chapter.isFree || hasPurchased)
-                    ) {
-                      setCurrentChapter(chapter);
-                    } else if (!hasPurchased && !chapter.isFree) {
-                      toast.error(
-                        'Ce chapitre est réservé aux étudiants inscrits'
-                      );
-                    }
-                  }}
-                />
-              ))}
+              {chapters.map((chapter) => {
+                // Trouver la progression pour ce chapitre spécifique
+                const chapterProgress = courseProgress?.progress?.find(
+                  (p) => p.chapterId === chapter.id
+                );
+
+                return (
+                  <ChapterItem
+                    key={chapter.id}
+                    title={chapter.title}
+                    position={chapter.position}
+                    isPublished={chapter.isPublished}
+                    isFree={chapter.isFree}
+                    isLocked={!chapter.isFree && !hasPurchased}
+                    isCurrent={currentChapter?.id === chapter.id}
+                    isCompleted={chapterProgress?.isCompleted === true}
+                    hasPurchased={hasPurchased}
+                    onClick={() => {
+                      if (
+                        chapter.isPublished &&
+                        (chapter.isFree || hasPurchased)
+                      ) {
+                        setCurrentChapter(chapter);
+                      }
+                    }}
+                  />
+                );
+              })}
             </div>
           </div>
         </div>
@@ -259,10 +275,84 @@ const Course = () => {
                           {currentChapter.isFree && ' (Gratuit)'}
                         </p>
                       </div>
-                      {isChapterCompleted(currentChapter.id) && (
-                        <CheckCircle className="h-6 w-6 text-emerald-600" />
-                      )}
+                      <div className="flex items-center gap-x-4">
+                        {!hasPurchased ? (
+                          <button
+                            onClick={() => {
+                              paymentApi
+                                .createCheckoutSession(courseId)
+                                .then((response) => {
+                                  window.location.href = response.url;
+                                })
+                                .catch((error) => {
+                                  console.error(
+                                    'Error creating checkout session:',
+                                    error
+                                  );
+                                  toast.error(
+                                    'Erreur lors de la redirection vers le paiement'
+                                  );
+                                });
+                            }}
+                            className="px-4 py-2 bg-sky-700 text-white rounded-md hover:bg-sky-800 flex items-center gap-x-2"
+                          >
+                            Acheter pour {course?.price}€
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() =>
+                              handleChapterComplete(currentChapter.id)
+                            }
+                            disabled={isChapterCompleted(currentChapter.id)}
+                            className={cn(
+                              'px-4 py-2 rounded-md flex items-center gap-x-2',
+                              isChapterCompleted(currentChapter.id)
+                                ? 'bg-emerald-700 text-white cursor-not-allowed'
+                                : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                            )}
+                          >
+                            {isChapterCompleted(currentChapter.id) ? (
+                              <>
+                                <CheckCircle className="h-4 w-4" />
+                                Terminé
+                              </>
+                            ) : (
+                              'Marquer comme terminé'
+                            )}
+                          </button>
+                        )}
+                      </div>
                     </div>
+
+                    {!hasPurchased && !currentChapter.isFree && (
+                      <div className="fixed top-0 left-0 right-0 bg-yellow-100 p-4 text-yellow-800 flex items-center justify-center">
+                        <p className="text-sm">
+                          Vous devez acheter ce cours pour accéder à ce
+                          chapitre.
+                          <button
+                            onClick={() => {
+                              paymentApi
+                                .createCheckoutSession(courseId)
+                                .then((response) => {
+                                  window.location.href = response.url;
+                                })
+                                .catch((error) => {
+                                  console.error(
+                                    'Error creating checkout session:',
+                                    error
+                                  );
+                                  toast.error(
+                                    'Erreur lors de la redirection vers le paiement'
+                                  );
+                                });
+                            }}
+                            className="ml-2 underline hover:text-yellow-900"
+                          >
+                            Acheter maintenant
+                          </button>
+                        </p>
+                      </div>
+                    )}
 
                     <div>
                       <h3 className="text-lg font-semibold mb-2">

@@ -200,11 +200,16 @@ namespace LMSAPP.Server.Services
             {
                 _logger.LogInformation("Getting purchases for user {UserId}", userId);
 
+                var completedChapters = await _context.UserProgresses
+                    .Where(up => up.UserId == userId && up.IsCompleted)
+                    .Select(up => up.ChapterId)
+                    .ToListAsync();
+
                 var purchases = await _context.Purchases
                     .Where(p => p.UserId == userId)
                     .Include(p => p.Course)
                         .ThenInclude(c => c.Category)
-                    .Include(p => p.Course.Chapters)
+                    .Include(p => p.Course.Chapters) // Assurez-vous que cette ligne est présente
                     .Select(p => new
                     {
                         Id = p.Course.Id,
@@ -218,13 +223,31 @@ namespace LMSAPP.Server.Services
                             Id = p.Course.Category.Id,
                             Name = p.Course.Category.Name
                         },
-                        Progress = 0, // On ajoutera le calcul de progression plus tard
-                        CreatedAt = p.CreatedAt,
-                        UpdatedAt = p.UpdatedAt
+                        Chapters = p.Course.Chapters.Select(c => new  // Ajout explicite des chapitres
+                        {
+                            Id = c.Id,
+                            Title = c.Title,
+                            Position = c.Position,
+                            IsPublished = c.IsPublished,
+                            IsFree = c.IsFree,
+                            IsCompleted = completedChapters.Contains(c.Id)
+                        }).ToList(),
+                        Progress = p.Course.Chapters.Any()
+                            ? Math.Round((double)p.Course.Chapters
+                                .Count(c => completedChapters.Contains(c.Id))
+                                / p.Course.Chapters.Count * 100)
+                            : 0
                     })
                     .ToListAsync();
 
-                _logger.LogInformation("Found {Count} purchases", purchases.Count);
+                // Log pour déboguer
+                _logger.LogInformation("Purchases with chapters: {Purchases}",
+                    purchases.Select(p => new
+                    {
+                        p.Title,
+                        ChapterCount = p.Chapters.Count
+                    }));
+
                 return Results.Ok(new { value = purchases });
             }
             catch (Exception ex)
@@ -233,7 +256,6 @@ namespace LMSAPP.Server.Services
                 return Results.Problem("An error occurred while getting user purchases");
             }
         }
-
         public Task<IResult> GetStripeCustomer(string userId)
         {
             throw new NotImplementedException();

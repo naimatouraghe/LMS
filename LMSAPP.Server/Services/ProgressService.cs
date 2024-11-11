@@ -145,15 +145,27 @@ namespace LMSAPP.Server.Services
         {
             try
             {
+                // Vérifier d'abord si le chapitre existe avec toutes les relations nécessaires
+                var chapter = await _context.Chapters
+                    .Include(c => c.Course)
+                    .FirstOrDefaultAsync(c => c.Id == chapterId);
+
+                if (chapter == null)
+                {
+                    return Results.NotFound("Chapter not found");
+                }
+
                 var progress = await _context.UserProgresses
+                    .Include(up => up.Chapter)
+                        .ThenInclude(c => c.Course)
+                            .ThenInclude(c => c.Category)
+                    .Include(up => up.User)
                     .FirstOrDefaultAsync(up => up.UserId == userId && up.ChapterId == chapterId);
 
                 if (progress == null)
                 {
                     var user = await _context.Users.FindAsync(userId)
                         ?? throw new InvalidOperationException("User not found");
-                    var chapter = await _context.Chapters.FindAsync(chapterId)
-                        ?? throw new InvalidOperationException("Chapter not found");
 
                     progress = new UserProgress
                     {
@@ -175,15 +187,26 @@ namespace LMSAPP.Server.Services
                 }
 
                 await _context.SaveChangesAsync();
-                return Results.Ok(MapToDto(progress));
+
+                // Recalculer le pourcentage de progression
+                var completionPercentage = await GetCourseCompletionPercentage(userId, chapter.CourseId);
+
+                return Results.Ok(new
+                {
+                    Progress = MapToDto(progress),
+                    CompletionPercentage = completionPercentage
+                });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error marking chapter as completed");
-                return Results.Problem("An error occurred while marking the chapter as completed");
+                return Results.Problem(
+                    title: "An error occurred while marking the chapter as completed",
+                    detail: ex.Message,
+                    statusCode: StatusCodes.Status500InternalServerError
+                );
             }
         }
-
         public async Task<IResult> GetCourseProgress(string userId, Guid courseId)
         {
             try

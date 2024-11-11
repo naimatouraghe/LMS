@@ -1,6 +1,6 @@
 import { BookOpen, CheckCircle, Lock, PlayCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { LoadingSpinner } from './common/LoadingSpinner';
+import { Progress } from './common/Progress';
 
 export const CourseCard = ({ course, progress }) => {
   if (!course) {
@@ -39,13 +39,6 @@ export const CourseCard = ({ course, progress }) => {
         </div>
       )}
 
-      {/* Overlay pour cours non achetés */}
-      {!isPurchased && (
-        <div className="absolute inset-0 bg-slate-800/60 z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-          <Lock className="h-8 w-8 text-white" />
-        </div>
-      )}
-
       {/* Image du cours */}
       <div className="relative aspect-video w-full overflow-hidden">
         <img
@@ -62,40 +55,31 @@ export const CourseCard = ({ course, progress }) => {
       </div>
 
       {/* Contenu */}
-      <div className="flex flex-col flex-grow p-4">
+      <div className="flex flex-col p-4">
         {/* Titre */}
-        <h3 className="text-lg font-medium text-slate-700 line-clamp-2">
+        <h3 className="text-lg font-medium text-slate-700 mb-2">
           {course.title}
         </h3>
 
-        {/* Description */}
-        <p className="text-sm text-slate-500 mt-1 line-clamp-2">
-          {course.description}
-        </p>
-
         {/* Catégorie */}
-        <p className="text-xs text-slate-400 mt-2">{course.category?.name}</p>
+        <p className="text-sm text-slate-500 mb-2">{course.category?.name}</p>
 
         {/* Nombre de chapitres */}
-        <div className="flex items-center gap-x-2 text-sm text-slate-500 mt-4">
+        <div className="flex items-center gap-x-2 text-sm text-slate-500 mb-2">
           <BookOpen className="h-4 w-4" />
-          <span>
-            {course.chapters?.length || 0}
-            {course.chapters?.length === 1 ? ' Chapitre' : ' Chapitres'}
-          </span>
+          <span>{course.chapters?.length || 0} Chapitres</span>
         </div>
 
-        {/* Progression avec LoadingSpinner */}
+        {/* Barre de progression pour les cours achetés */}
         {isPurchased && (
-          <div className="mt-4 flex items-center gap-2">
-            <LoadingSpinner
-              size="sm"
-              color={isCompleted ? 'success' : 'primary'}
+          <div className="mt-2">
+            <Progress
+              value={progress || 0}
+              className="h-2"
+              variant={isCompleted ? 'success' : 'default'}
             />
-            <p className="text-sm text-slate-500">
-              {isCompleted
-                ? 'Cours terminé'
-                : `${Math.round(progress)}% complété`}
+            <p className="text-sm text-emerald-700 mt-2">
+              {progress ? `${Math.round(progress)}% Complete` : '0% Complete'}
             </p>
           </div>
         )}

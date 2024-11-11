@@ -23,10 +23,25 @@ const Dashboard = () => {
       try {
         setLoading(true);
         setError(null);
-        const courses = await paymentApi.getUserPurchases(user.id);
-        setPurchasedCourses(
-          Array.isArray(courses) ? courses : courses?.value || []
-        );
+
+        const response = await paymentApi.getUserPurchases(user.id);
+        console.log('API Response:', response); // Debug log
+
+        const courses = response?.value || [];
+        console.log('Courses before mapping:', courses); // Debug log
+
+        const coursesWithChapters = courses.map((course) => {
+          console.log('Course chapters:', course.chapters); // Debug log pour chaque cours
+          return {
+            ...course,
+            chapters: Array.isArray(course.chapters) ? course.chapters : [],
+            category: course.category || { name: 'Non catégorisé' },
+            progress: course.progress || 0,
+          };
+        });
+
+        console.log('Final courses:', coursesWithChapters); // Debug log final
+        setPurchasedCourses(coursesWithChapters);
       } catch (error) {
         console.error('Erreur lors de la récupération des cours:', error);
         setError(
@@ -38,7 +53,7 @@ const Dashboard = () => {
     };
 
     fetchPurchasedCourses();
-  }, [user?.id]); // Dépendance explicite à user.id
+  }, [user?.id]);
 
   // Redirection si non authentifié
   if (!isAuthenticated) {

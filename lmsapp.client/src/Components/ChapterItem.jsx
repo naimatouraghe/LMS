@@ -1,46 +1,47 @@
-import { Lock, PlayCircle } from 'lucide-react';
+import { Lock, PlayCircle, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const ChapterItem = ({
   title,
-  position,
   isPublished,
   isFree,
   isLocked,
   isCurrent,
   hasPurchased,
   onClick,
+  isCompleted,
 }) => {
   return (
     <button
       onClick={onClick}
       className={cn(
-        'flex w-full items-center gap-x-3 text-slate-700 text-sm p-3 hover:bg-slate-100/80 transition-all',
-        isCurrent && 'bg-slate-100/80',
-        !isPublished && 'opacity-50 cursor-not-allowed'
+        'flex w-full items-center gap-x-3 text-sm font-medium p-4 hover:bg-slate-100/80 transition-all border-b',
+        {
+          'text-emerald-700 bg-emerald-50': isCompleted === true,
+          'bg-slate-100/80': isCurrent && !isCompleted,
+          'opacity-50 cursor-not-allowed': !isPublished,
+        }
       )}
       disabled={!isPublished}
     >
       <div className="flex items-center gap-x-2 flex-1">
-        {hasPurchased ? (
-          // Si le cours est acheté, on montre toujours PlayCircle
-          <>
-            <PlayCircle className="h-4 w-4 text-slate-500" />
-            <span className="text-slate-700">
-              {position}.{title}
-            </span>
-          </>
+        {isCompleted === true ? (
+          <CheckCircle className="h-4 w-4 text-emerald-700" />
         ) : (
-          // Si le cours n'est pas acheté
           <>
             {isLocked ? (
               <Lock className="h-4 w-4 text-slate-500" />
             ) : (
-              <PlayCircle className="h-4 w-4 text-slate-500" />
+              <PlayCircle
+                className={cn(
+                  'h-4 w-4',
+                  isCurrent ? 'text-slate-700' : 'text-slate-500'
+                )}
+              />
             )}
-            <span className="text-slate-700">{title}</span>
           </>
         )}
+        <span>{title}</span>
       </div>
     </button>
   );
