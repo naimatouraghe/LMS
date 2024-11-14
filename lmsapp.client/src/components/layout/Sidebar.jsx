@@ -1,9 +1,11 @@
 // src/components/Sidebar.js
 import { useAuth } from '../../contexts/AuthContext';
-import NavLinks from './NavLinks';
+import MainNavLinks from './MainNavLinks';
+import TeacherNavLinks from './TeacherNavLinks';
+import { LogOut } from 'lucide-react';
 
 const Sidebar = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   return (
     <div className="flex flex-col h-full p-4">
@@ -12,11 +14,13 @@ const Sidebar = () => {
         {user && <p className="text-gray-400 mt-2">Welcome, {user.fullName}</p>}
       </div>
 
-      <nav className="flex-grow flex flex-col space-y-2">
-        <NavLinks />
+      <nav className="flex-grow">
+        <MainNavLinks />
       </nav>
 
-      {/* Autres éléments du sidebar (logout, etc.) */}
+      <div className="border-t border-gray-700 my-4"></div>
+
+      <TeacherNavLinks />
     </div>
   );
 };

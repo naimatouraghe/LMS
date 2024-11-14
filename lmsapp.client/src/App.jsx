@@ -8,17 +8,27 @@ import Login from './Pages/Login';
 import Profile from './pages/Profile';
 import Course from './pages/Course';
 import { useAuth } from './contexts/AuthContext';
-import Dashboard from './Pages/Dashboard';
 import { Toaster } from 'react-hot-toast';
+import AnalyticsDashboard from './pages/Dashboard/AnalyticsDashboard';
+import CoursesDashboard from './pages/Dashboard/CoursesDashboard';
 // Composant de protection des routes
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, isAuthenticated } = useAuth();
+
+  console.log('Protected Route:', {
+    isAuthenticated,
+    userRoles: user?.roles,
+    allowedRoles,
+  });
 
   if (!isAuthenticated) {
     return <Navigate to="/login" />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  if (
+    allowedRoles &&
+    !allowedRoles.some((role) => user?.roles?.includes(role))
+  ) {
     return <Navigate to="/" />;
   }
 
@@ -29,11 +39,11 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 const DashboardRouter = () => {
   const { user } = useAuth();
 
-  switch (user.role) {
-    case 'Admin':
-      return <AdminDashboard />;
+  switch (user?.role) {
     case 'Teacher':
-      return <TeacherDashboard />;
+      return <Navigate to="/teacher" />;
+    case 'Admin':
+      return <Navigate to="/admin" />;
     default:
       return <Navigate to="/" />;
   }
@@ -59,8 +69,22 @@ function App() {
           <Route path="/" element={<Browse />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/courses/:courseId" element={<Course />} />
+
+          {/* Routes Teacher */}
+          <Route
+            path="/teacher/*"
+            element={
+              <ProtectedRoute allowedRoles={['Teacher']}>
+                <Routes>
+                  <Route index element={<TeacherDashboard />} />
+                  <Route path="courses/create" element={<CoursesDashboard />} />
+                  <Route path="analytics" element={<AnalyticsDashboard />} />
+                </Routes>
+              </ProtectedRoute>
+            }
+          />
+
           {/* Routes protégées */}
           <Route
             path="/profile"
@@ -89,12 +113,12 @@ function App() {
             }
           />
 
-          {/* Routes Teacher */}
+          {/* Route Dashboard avec redirection selon le rôle */}
           <Route
-            path="/teacher/*"
+            path="/dashboard"
             element={
-              <ProtectedRoute allowedRoles={['Teacher']}>
-                <TeacherDashboard />
+              <ProtectedRoute>
+                <DashboardRouter />
               </ProtectedRoute>
             }
           />
