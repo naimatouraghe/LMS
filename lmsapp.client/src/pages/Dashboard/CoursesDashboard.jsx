@@ -6,8 +6,12 @@ import { Textarea } from '../../components/features/Textarea';
 import { ImageUpload } from '../../components/features/ImageUpload';
 import { PencilIcon, Plus, DollarSign, FileText, X } from 'lucide-react';
 import { Select } from '../../components/features/Select';
+import { useNavigate } from 'react-router-dom';
+import ChapterForm from '../teacher/ChapterForm';
 
 export default function CreateCourse() {
+  const navigate = useNavigate();
+
   const [course, setCourse] = useState({
     title: '',
     description: '',
@@ -19,6 +23,8 @@ export default function CreateCourse() {
   });
 
   const [isComplete, setIsComplete] = useState(false);
+  const [isChapterFormOpen, setIsChapterFormOpen] = useState(false);
+  const [editingChapter, setEditingChapter] = useState(null);
 
   // Catégories disponibles (à adapter selon vos besoins)
   const categories = [
@@ -55,6 +61,25 @@ export default function CreateCourse() {
       ...prev,
       attachments: prev.attachments.filter((att) => att.id !== attachmentId),
     }));
+  };
+
+  const handleAddChapter = (chapterData) => {
+    setCourse((prev) => ({
+      ...prev,
+      chapters: [...prev.chapters, { ...chapterData, id: Date.now() }],
+    }));
+  };
+
+  const handleEditChapter = (chapterData) => {
+    setCourse((prev) => ({
+      ...prev,
+      chapters: prev.chapters.map((chapter) =>
+        chapter.id === editingChapter.id
+          ? { ...chapter, ...chapterData }
+          : chapter
+      ),
+    }));
+    setEditingChapter(null);
   };
 
   return (
@@ -186,16 +211,19 @@ export default function CreateCourse() {
                   </span>
                   Course chapters
                 </h2>
-                <Button size="sm">
+                <Button
+                  size="sm"
+                  onClick={() => navigate('/teacher/chapters/create')}
+                >
                   <Plus className="w-4 h-4 mr-2" />
                   Add a chapter
                 </Button>
               </div>
 
               <div className="space-y-4">
-                {course.chapters.map((chapter, index) => (
+                {course.chapters.map((chapter) => (
                   <div
-                    key={index}
+                    key={chapter.id}
                     className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
                   >
                     <span>{chapter.title}</span>

@@ -11,6 +11,7 @@ import { useAuth } from './contexts/AuthContext';
 import { Toaster } from 'react-hot-toast';
 import AnalyticsDashboard from './pages/Dashboard/AnalyticsDashboard';
 import CoursesDashboard from './pages/Dashboard/CoursesDashboard';
+import ChapterForm from './pages/teacher/ChapterForm';
 // Composant de protection des routes
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, isAuthenticated } = useAuth();
@@ -80,6 +81,7 @@ function App() {
                   <Route index element={<TeacherDashboard />} />
                   <Route path="courses/create" element={<CoursesDashboard />} />
                   <Route path="analytics" element={<AnalyticsDashboard />} />
+                  <Route path="chapters/create" element={<ChapterForm />} />
                 </Routes>
               </ProtectedRoute>
             }
