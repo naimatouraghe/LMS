@@ -25,22 +25,23 @@ const Dashboard = () => {
         setError(null);
 
         const response = await paymentApi.getUserPurchases(user.id);
-        console.log('API Response:', response); // Debug log
 
         const courses = response?.value || [];
-        console.log('Courses before mapping:', courses); // Debug log
+        const coursesWithChapters = courses.map((course) => ({
+          id: course.courseId,
+          title: course.courseTitle,
+          description: course.courseDescription,
+          imageUrl: course.courseImageUrl,
+          price: course.coursePrice,
+          category: {
+            id: course.category?.categoryId,
+            name: course.category?.categoryName || 'Non catégorisé',
+          },
+          chapters: Array.isArray(course.chapters) ? course.chapters : [],
+          progress: course.progress || 0,
+        }));
 
-        const coursesWithChapters = courses.map((course) => {
-          console.log('Course chapters:', course.chapters); // Debug log pour chaque cours
-          return {
-            ...course,
-            chapters: Array.isArray(course.chapters) ? course.chapters : [],
-            category: course.category || { name: 'Non catégorisé' },
-            progress: course.progress || 0,
-          };
-        });
-
-        console.log('Final courses:', coursesWithChapters); // Debug log final
+        console.log('Processed courses:', coursesWithChapters);
         setPurchasedCourses(coursesWithChapters);
       } catch (error) {
         console.error('Erreur lors de la récupération des cours:', error);
@@ -84,17 +85,38 @@ const Dashboard = () => {
     );
   }
 
-  const completedCourses = purchasedCourses.filter(
-    (course) => course.progress === 100
-  );
+  const filterAndMapCourses = () => {
+    const coursesMap = new Map();
 
-  const inProgressCourses = purchasedCourses.filter(
-    (course) => course.progress > 0 && course.progress < 100
-  );
+    // Créer des objets uniques pour chaque cours
+    purchasedCourses.forEach((course) => {
+      if (!coursesMap.has(course.id)) {
+        const status =
+          course.progress === 100
+            ? 'completed'
+            : course.progress > 0
+            ? 'inProgress'
+            : 'notStarted';
 
-  const notStartedCourses = purchasedCourses.filter(
-    (course) => course.progress === 0
-  );
+        coursesMap.set(course.id, {
+          ...course,
+          status,
+          uniqueKey: `${status}-${course.id}-${Date.now()}`,
+        });
+      }
+    });
+
+    // Convertir la Map en tableau et trier selon l'ordre souhaité
+    return Array.from(coursesMap.values()).sort((a, b) => {
+      const orderMap = {
+        notStarted: 0,
+        inProgress: 1,
+        completed: 2,
+      };
+
+      return orderMap[a.status] - orderMap[b.status];
+    });
+  };
 
   return (
     <>
@@ -110,7 +132,11 @@ const Dashboard = () => {
             <div>
               <p className="font-medium">En cours</p>
               <p className="text-slate-500 text-sm">
-                {inProgressCourses.length} cours
+                {
+                  purchasedCourses.filter((course) => course.progress > 0)
+                    .length
+                }{' '}
+                cours
               </p>
             </div>
           </div>
@@ -122,20 +148,20 @@ const Dashboard = () => {
             <div>
               <p className="font-medium">Terminés</p>
               <p className="text-slate-500 text-sm">
-                {completedCourses.length} cours
+                {
+                  purchasedCourses.filter((course) => course.progress === 100)
+                    .length
+                }{' '}
+                cours
               </p>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {[
-            ...inProgressCourses,
-            ...completedCourses,
-            ...notStartedCourses,
-          ].map((course) => (
+          {filterAndMapCourses().map((course) => (
             <CourseCard
-              key={course.id}
+              key={course.uniqueKey}
               course={course}
               progress={course.progress}
             />

@@ -9,6 +9,7 @@ using Microsoft.IdentityModel.Tokens;
 using Stripe;
 using System.Text;
 using Microsoft.OpenApi.Models;
+using System.Text.Json.Serialization;
 
 namespace LMSAPP.Server
 {
@@ -22,7 +23,12 @@ namespace LMSAPP.Server
             StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
 
             // Ajouter les services au conteneur DI
-            builder.Services.AddControllers();
+            builder.Services.AddControllers()
+                .AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+                    options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+                });
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen(c =>
             {

@@ -6,7 +6,7 @@ import AdminDashboard from './Pages/Dashboard/AdminDashboard';
 import Register from './Pages/Register';
 import Login from './Pages/Login';
 import Profile from './pages/Profile';
-import Course from './Pages/Course';
+import Course from './pages/Course';
 import { useAuth } from './contexts/AuthContext';
 import Dashboard from './Pages/Dashboard';
 import { Toaster } from 'react-hot-toast';
@@ -60,7 +60,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
-
+          <Route path="/courses/:courseId" element={<Course />} />
           {/* Routes protégées */}
           <Route
             path="/profile"

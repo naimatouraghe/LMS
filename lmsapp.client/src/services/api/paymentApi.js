@@ -1,4 +1,5 @@
 import axios from '../axios';
+import { loadStripe } from '@stripe/stripe-js';
 
 export const paymentApi = {
   // Gestion des clients Stripe
@@ -42,9 +43,10 @@ export const paymentApi = {
   },
 
   // Session de paiement
-  createCheckoutSession: async (courseId) => {
+  createCheckoutSession: async (userId, courseId) => {
     const response = await axios.post(
-      `/Payment/create-checkout-session/${courseId}`
+      `/Payment/create-checkout-session/${courseId}`,
+      { userId }
     );
     return response.data;
   },
@@ -57,11 +59,38 @@ export const paymentApi = {
 
   handlePaymentSuccess: async (sessionId) => {
     try {
-      // Logique post-paiement réussi
-      // Par exemple, redirection vers la page du cours
-      return true;
+      // Fetch session details from your API
+      const sessionResponse = await axios.get(`/Payment/session/${sessionId}`);
+
+      // Ensure the response contains the necessary data
+      const courseId = sessionResponse.data.courseId; // Adjust based on your API response
+      const userId = sessionResponse.data.userId; // Adjust based on your API response
+
+      // Call the API to create the purchase
+      const purchaseResponse = await paymentApi.createPurchase(courseId);
+
+      if (purchaseResponse) {
+        // Redirect to the course page after successful purchase creation
+        window.location.href = `https://localhost:5173/courses/${courseId}`;
+        return true;
+      } else {
+        console.error('Failed to create purchase');
+        return false;
+      }
     } catch (error) {
       console.error('Payment success handling error:', error);
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        console.error('Response data:', error.response.data);
+        console.error('Response status:', error.response.status);
+        console.error('Response headers:', error.response.headers);
+      } else if (error.request) {
+        // The request was made but no response was received
+        console.error('Request data:', error.request);
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        console.error('Error message:', error.message);
+      }
       return false;
     }
   },

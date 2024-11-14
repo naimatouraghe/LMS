@@ -1,14 +1,12 @@
 import { BookOpen, CheckCircle, Lock, PlayCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Progress } from './common/Progress';
+import { LoadingSpinner } from './common/LoadingSpinner';
 
 export const CourseCard = ({ course, progress }) => {
-  if (!course) {
-    return (
-      <div className="flex items-center justify-center h-[300px] rounded-lg border">
-        <LoadingSpinner size="lg" color="primary" />
-      </div>
-    );
+  if (!course || !course.id || !course.title) {
+    console.warn('Invalid course data:', course);
+    return null;
   }
 
   const formatPrice = (price) => {

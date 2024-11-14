@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeft,
   CheckCircle,
@@ -35,8 +35,18 @@ const Course = () => {
   const [courseProgress, setCourseProgress] = useState(null);
   const [showChapters, setShowChapters] = useState(false);
 
+  console.log('Course ID:', courseId);
+
+  if (!courseId) {
+    return <div>Course ID is missing.</div>;
+  }
+
   useEffect(() => {
     const fetchCourseData = async () => {
+      if (!courseId) {
+        console.error('Course ID is undefined');
+        return;
+      }
       try {
         setIsLoading(true);
         setError(null);
@@ -199,17 +209,18 @@ const Course = () => {
                 Vous devez acheter ce cours pour accéder à ce chapitre
               </p>
               <button
-                onClick={() => {
-                  paymentApi
-                    .createCheckoutSession(courseId)
-                    .then((response) => {
-                      window.location.href = response.url;
-                    })
-                    .catch((error) => {
-                      toast.error(
-                        'Erreur lors de la redirection vers le paiement'
-                      );
-                    });
+                onClick={async () => {
+                  const response = await paymentApi.createCheckoutSession(
+                    user.id,
+                    courseId
+                  );
+                  if (response.sessionUrl) {
+                    window.location.href = response.sessionUrl; // Redirection vers Stripe
+                  } else {
+                    toast.error(
+                      'Erreur lors de la création de la session de paiement'
+                    );
+                  }
                 }}
                 className="mt-4 px-4 py-2 bg-sky-700 hover:bg-sky-800 rounded-md"
               >
@@ -230,17 +241,18 @@ const Course = () => {
             <p className="text-sm">
               Vous devez acheter ce cours pour accéder à ce chapitre.
               <button
-                onClick={() => {
-                  paymentApi
-                    .createCheckoutSession(courseId)
-                    .then((response) => {
-                      window.location.href = response.url;
-                    })
-                    .catch((error) => {
-                      toast.error(
-                        'Erreur lors de la redirection vers le paiement'
-                      );
-                    });
+                onClick={async () => {
+                  const response = await paymentApi.createCheckoutSession(
+                    user.id,
+                    courseId
+                  );
+                  if (response.sessionUrl) {
+                    window.location.href = response.sessionUrl; // Redirection vers Stripe
+                  } else {
+                    toast.error(
+                      'Erreur lors de la création de la session de paiement'
+                    );
+                  }
                 }}
                 className="ml-2 underline hover:text-yellow-900"
               >
@@ -262,21 +274,18 @@ const Course = () => {
             <div className="flex items-center gap-x-4">
               {!hasPurchased ? (
                 <button
-                  onClick={() => {
-                    paymentApi
-                      .createCheckoutSession(courseId)
-                      .then((response) => {
-                        window.location.href = response.url;
-                      })
-                      .catch((error) => {
-                        console.error(
-                          'Error creating checkout session:',
-                          error
-                        );
-                        toast.error(
-                          'Erreur lors de la redirection vers le paiement'
-                        );
-                      });
+                  onClick={async () => {
+                    const response = await paymentApi.createCheckoutSession(
+                      user.id,
+                      courseId
+                    );
+                    if (response.sessionUrl) {
+                      window.location.href = response.sessionUrl; // Redirection vers Stripe
+                    } else {
+                      toast.error(
+                        'Erreur lors de la création de la session de paiement'
+                      );
+                    }
                   }}
                   className="px-4 py-2 bg-sky-700 text-white rounded-md hover:bg-sky-800 flex items-center gap-x-2"
                 >
@@ -311,21 +320,18 @@ const Course = () => {
               <p className="text-sm">
                 Vous devez acheter ce cours pour accéder à ce chapitre.
                 <button
-                  onClick={() => {
-                    paymentApi
-                      .createCheckoutSession(courseId)
-                      .then((response) => {
-                        window.location.href = response.url;
-                      })
-                      .catch((error) => {
-                        console.error(
-                          'Error creating checkout session:',
-                          error
-                        );
-                        toast.error(
-                          'Erreur lors de la redirection vers le paiement'
-                        );
-                      });
+                  onClick={async () => {
+                    const response = await paymentApi.createCheckoutSession(
+                      user.id,
+                      courseId
+                    );
+                    if (response.sessionUrl) {
+                      window.location.href = response.sessionUrl; // Redirection vers Stripe
+                    } else {
+                      toast.error(
+                        'Erreur lors de la création de la session de paiement'
+                      );
+                    }
                   }}
                   className="ml-2 underline hover:text-yellow-900"
                 >
@@ -343,6 +349,39 @@ const Course = () => {
       </>
     );
   };
+
+  useEffect(() => {
+    const handlePaymentSuccess = async () => {
+      const queryParams = new URLSearchParams(window.location.search);
+      const sessionId = queryParams.get('session_id');
+
+      if (sessionId) {
+        try {
+          // Attendre un court instant pour laisser le temps au webhook de traiter le paiement
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+
+          const success = await paymentApi.handlePaymentSuccess(sessionId);
+
+          if (success) {
+            toast.success('Paiement réussi ! Accès au cours accordé.');
+            // Recharger les données du cours
+            await fetchCourseData();
+          } else {
+            toast.error('Échec du traitement du paiement.');
+            navigate('/browse');
+          }
+        } catch (error) {
+          console.error('Erreur lors du traitement du paiement:', error);
+          toast.error(
+            'Une erreur est survenue lors du traitement du paiement.'
+          );
+          navigate('/browse');
+        }
+      }
+    };
+
+    handlePaymentSuccess();
+  }, []);
 
   if (isLoading) {
     return (

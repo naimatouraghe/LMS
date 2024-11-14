@@ -17,5 +17,6 @@ namespace LMSAPP.Server.Services.Interfaces
         // Checkout Session
         Task<IResult> CreateCheckoutSession(string userId, Guid courseId);
         Task<IResult> HandleStripeWebhook(string requestBody, string stripeSignature);
+        Task<IResult> GetSession(string sessionId);
     }
 }

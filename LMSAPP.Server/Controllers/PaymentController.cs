@@ -50,8 +50,10 @@ namespace LMSAPP.Server.Controllers
         [HttpPost("purchases/{courseId}")]
         public async Task<IResult> CreatePurchase(Guid courseId)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
-                ?? throw new UnauthorizedAccessException("User not authenticated");
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Results.Unauthorized();
+
             return await _paymentService.CreatePurchase(userId, courseId);
         }
 
@@ -85,6 +87,12 @@ namespace LMSAPP.Server.Controllers
             var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
             var signature = Request.Headers["Stripe-Signature"].ToString();
             return await _paymentService.HandleStripeWebhook(json, signature);
+        }
+
+        [HttpGet("session/{sessionId}")]
+        public async Task<IResult> GetSession(string sessionId)
+        {
+            return await _paymentService.GetSession(sessionId);
         }
     }
 }
