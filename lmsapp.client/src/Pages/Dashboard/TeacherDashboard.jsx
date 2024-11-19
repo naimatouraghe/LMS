@@ -32,7 +32,7 @@ export default function TeacherDashboard() {
 
   const columns = [
     {
-      header: 'Titre',
+      header: 'Title',
       accessorKey: 'title',
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
@@ -46,12 +46,12 @@ export default function TeacherDashboard() {
       ),
     },
     {
-      header: 'Prix',
+      header: 'Price',
       accessorKey: 'price',
       cell: ({ row }) => `${row.original.price} €`,
     },
     {
-      header: 'Publié',
+      header: 'Published',
       accessorKey: 'isPublished',
       cell: ({ row }) => (
         <span
@@ -61,7 +61,7 @@ export default function TeacherDashboard() {
               : 'bg-yellow-100 text-yellow-800'
           }`}
         >
-          {row.original.isPublished ? 'Publié' : 'Brouillon'}
+          {row.original.isPublished ? 'Published' : 'Draft'}
         </span>
       ),
     },
@@ -74,14 +74,14 @@ export default function TeacherDashboard() {
             size="sm"
             onClick={() => navigate(`/teacher/courses/${row.original.id}`)}
           >
-            Modifier
+            Edit
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={() => navigate(`/courses/${row.original.id}`)}
           >
-            Aperçu
+            Preview
           </Button>
         </div>
       ),
@@ -91,10 +91,10 @@ export default function TeacherDashboard() {
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Mes cours</h1>
+        <h1 className="text-2xl font-bold">My courses</h1>
         <Button onClick={() => navigate('/teacher/courses/new')}>
           <Plus className="w-4 h-4 mr-2" />
-          Créer un cours
+          Create a course
         </Button>
       </div>
 
