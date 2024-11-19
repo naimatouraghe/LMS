@@ -33,7 +33,7 @@ export default function CoursesDashboard() {
   const [error, setError] = useState(null);
 
   const [course, setCourse] = useState({
-    title: '',
+    title: localStorage.getItem('initialCourseTitle') || '',
     description: '',
     imageUrl: '',
     price: '0',
@@ -47,6 +47,9 @@ export default function CoursesDashboard() {
   });
 
   const [isComplete, setIsComplete] = useState(false);
+
+  // Ajouter un state pour gérer le mode édition
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -74,24 +77,40 @@ export default function CoursesDashboard() {
 
       try {
         setIsLoading(true);
+        setError(null);
 
         // Charger les données du cours
         const courseResponse = await courseApi.getCourse(courseId);
+        console.log('Course data loaded:', courseResponse);
 
         // Charger les chapitres
         const chaptersResponse = await courseApi.getCourseChapters(courseId);
-        console.log('Chapitres chargés:', chaptersResponse);
+        console.log('Chapters loaded:', chaptersResponse);
 
         if (courseResponse) {
+          // Utiliser le titre stocké dans le localStorage si pas de titre dans la réponse
+          const title =
+            courseResponse.title ||
+            localStorage.getItem('initialCourseTitle') ||
+            '';
+
           setCourse((prev) => ({
             ...prev,
             ...courseResponse,
+            title: title,
+            description: courseResponse.description || '',
+            imageUrl: courseResponse.imageUrl || '',
+            price: courseResponse.price?.toString() || '0',
+            categoryId: courseResponse.categoryId || '',
+            level: courseResponse.level || LANGUAGE_LEVELS.A1,
+            isPublished: courseResponse.isPublished || false,
             chapters: chaptersResponse?.value || [],
           }));
         }
       } catch (err) {
-        console.error('Erreur lors du chargement du cours:', err);
+        console.error('Error loading course:', err);
         setError('Erreur lors du chargement du cours et des chapitres');
+        toast.error('Erreur lors du chargement du cours');
       } finally {
         setIsLoading(false);
       }
@@ -247,15 +266,21 @@ export default function CoursesDashboard() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="font-medium">Course title</h3>
-                  <Button variant="ghost" size="sm">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsEditingTitle(!isEditingTitle)}
+                  >
                     <PencilIcon className="w-4 h-4 mr-2" />
-                    Edit title
+                    {isEditingTitle ? 'Cancel' : 'Edit title'}
                   </Button>
                 </div>
                 <Input
                   value={course.title}
                   onChange={(e) => updateCourse('title', e.target.value)}
                   placeholder="e.g. 'Advanced web development'"
+                  className="w-full"
+                  readOnly={!isEditingTitle} // Rendre le champ en lecture seule sauf en mode édition
                 />
 
                 {/* Description */}
