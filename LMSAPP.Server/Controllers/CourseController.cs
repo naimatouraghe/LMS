@@ -32,10 +32,17 @@ namespace LMSAPP.Server.Controllers
             return await _courseService.GetAllCoursesAsync(searchTerm, category);
         }
 
-        [HttpGet("{courseId}")]
-        public async Task<IResult> GetCourse(Guid courseId)
+        [HttpGet("{id}")]
+        public async Task<ActionResult<CourseDto>> GetCourse(Guid id)
         {
-            return await _courseService.GetCourseAsync(courseId);
+            var result = await _courseService.GetCourseAsync(id);
+
+            if (result is ObjectResult objectResult)
+            {
+                return StatusCode(objectResult.StatusCode ?? 500, objectResult.Value);
+            }
+
+            return Ok(result);
         }
 
         [HttpPut("{courseId}")]
@@ -62,9 +69,10 @@ namespace LMSAPP.Server.Controllers
         // Chapter Management
         [HttpPost("{courseId}/chapters")]
         [Authorize(Roles = "Teacher")]
-        public async Task<IResult> AddChapter(Guid courseId, [FromBody] ChapterDto chapterDto)
+        public async Task<IResult> AddChapter(Guid courseId, [FromBody] CreateChapterDto createChapterDto)
         {
-            return await _courseService.AddChapterAsync(courseId, chapterDto);
+            createChapterDto.CourseId = courseId;
+            return await _courseService.AddChapterAsync(courseId, createChapterDto);
         }
 
         [HttpPut("chapters/{chapterId}")]
@@ -190,6 +198,15 @@ namespace LMSAPP.Server.Controllers
                 ?? throw new UnauthorizedAccessException("User not authenticated");
             var result = await _courseService.HasUserPurchasedCourseAsync(userId, courseId);
             return Results.Ok(result);
+        }
+
+        [HttpPost("initial")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IResult> CreateInitialCourse([FromBody] InitialCourseDto initialCourseDto)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? throw new UnauthorizedAccessException("User not authenticated");
+            return await _courseService.CreateInitialCourseAsync(initialCourseDto, userId);
         }
     }
 }

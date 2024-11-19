@@ -11,13 +11,38 @@ export const courseApi = {
   },
 
   getCourse: async (courseId) => {
-    const response = await axios.get(`/Course/${courseId}`);
-    return response.data;
+    try {
+      console.log('Getting course:', courseId);
+      const response = await axios.get(
+        `/Course/${courseId}?includeCategory=true`
+      );
+
+      const courseData = {
+        ...response.data,
+        userId: response.data.userId || '',
+        category: {
+          id: response.data.categoryId,
+          name: '',
+          courses: [],
+        },
+      };
+
+      console.log('Transformed course data:', courseData);
+      return courseData;
+    } catch (error) {
+      console.error('Error getting course:', error);
+      throw error;
+    }
   },
 
-  createCourse: async (courseDto) => {
-    const response = await axios.post('/Course', courseDto);
-    return response.data;
+  createCourse: async (courseData) => {
+    try {
+      const response = await axios.post('/Course/initial', courseData);
+      return response.data;
+    } catch (error) {
+      console.error('API Error:', error.response?.data);
+      throw error;
+    }
   },
 
   updateCourse: async (courseId, courseDto) => {
@@ -36,12 +61,21 @@ export const courseApi = {
   },
 
   // Gestion des chapitres
-  addChapter: async (courseId, chapterDto) => {
-    const response = await axios.post(
-      `/Course/${courseId}/chapters`,
-      chapterDto
-    );
-    return response.data;
+  addChapter: async (courseId, data) => {
+    try {
+      console.log('Adding chapter:', data);
+
+      const response = await axios.post(`/Course/${courseId}/chapters`, data, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error('API Error:', error.response?.data);
+      throw error;
+    }
   },
 
   updateChapter: async (chapterId, chapterDto) => {
@@ -154,6 +188,18 @@ export const courseApi = {
     } catch (error) {
       console.error('Error checking course purchase:', error);
       return false;
+    }
+  },
+
+  createInitialCourse: async (initialCourseDto) => {
+    try {
+      console.log('Creating initial course:', initialCourseDto);
+      const response = await axios.post('Course/initial', initialCourseDto);
+      console.log('Initial course response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('API Error:', error.response?.data);
+      throw error;
     }
   },
 };

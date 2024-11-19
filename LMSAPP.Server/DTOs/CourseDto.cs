@@ -14,8 +14,8 @@ namespace LMSAPP.Server.DTOs
         public required CategoryDto Category { get; set; }
         public LanguageLevel Level { get; set; }
         public required ICollection<ChapterDto> Chapters { get; set; }
-        public required ICollection<AttachmentDto> Attachments { get; set; }
-        public required ICollection<PurchaseDto> Purchases { get; set; }
+        public ICollection<AttachmentDto>? Attachments { get; set; }
+        public ICollection<PurchaseDto>? Purchases { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
     }

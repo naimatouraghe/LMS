@@ -12,6 +12,7 @@ import { Toaster } from 'react-hot-toast';
 import AnalyticsDashboard from './pages/Dashboard/AnalyticsDashboard';
 import CoursesDashboard from './pages/Dashboard/CoursesDashboard';
 import ChapterForm from './pages/teacher/ChapterForm';
+import InitialCourseForm from './pages/teacher/InitialCourseForm';
 // Composant de protection des routes
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, isAuthenticated } = useAuth();
@@ -79,9 +80,25 @@ function App() {
               <ProtectedRoute allowedRoles={['Teacher']}>
                 <Routes>
                   <Route index element={<TeacherDashboard />} />
-                  <Route path="courses/create" element={<CoursesDashboard />} />
+
+                  {/* Flux de création de cours */}
+                  <Route path="courses">
+                    <Route index element={<TeacherDashboard />} />
+                    <Route path="new" element={<InitialCourseForm />} />{' '}
+                    {/* Étape 1 */}
+                    <Route
+                      path=":courseId"
+                      element={<CoursesDashboard />}
+                    />{' '}
+                    {/* Étape 2 */}
+                    <Route
+                      path=":courseId/chapters/new"
+                      element={<ChapterForm />}
+                    />{' '}
+                    {/* Étape 3 */}
+                  </Route>
+
                   <Route path="analytics" element={<AnalyticsDashboard />} />
-                  <Route path="chapters/create" element={<ChapterForm />} />
                 </Routes>
               </ProtectedRoute>
             }

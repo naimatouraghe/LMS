@@ -92,7 +92,7 @@ export default function TeacherDashboard() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Mes cours</h1>
-        <Button onClick={() => navigate('/teacher/courses/create')}>
+        <Button onClick={() => navigate('/teacher/courses/new')}>
           <Plus className="w-4 h-4 mr-2" />
           Créer un cours
         </Button>

@@ -13,7 +13,7 @@ namespace LMSAPP.Server.Services.Interfaces
         Task<IResult> GetUserCoursesAsync(string userId);
 
         // Chapter Management
-        Task<IResult> AddChapterAsync(Guid courseId, ChapterDto chapterDto);
+        Task<IResult> AddChapterAsync(Guid courseId, CreateChapterDto createChapterDto);
         Task<IResult> UpdateChapterAsync(Guid chapterId, ChapterDto chapterDto);
         Task<IResult> DeleteChapterAsync(Guid chapterId);
         Task<IResult> ReorderChaptersAsync(Guid courseId, List<Guid> chapterIds);
@@ -37,5 +37,8 @@ namespace LMSAPP.Server.Services.Interfaces
         Task<IResult> GetPurchasedCoursesAsync(string userId);
         Task<bool> HasUserPurchasedCourseAsync(string userId, Guid courseId);
         Task<IResult> GetCourseProgressAsync(string userId, Guid courseId);
+
+        // Ajoutez cette méthode
+        Task<IResult> CreateInitialCourseAsync(InitialCourseDto initialCourseDto, string userId);
     }
 }

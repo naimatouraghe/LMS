@@ -65,7 +65,7 @@ namespace LMSAPP.Server
                 });
             });
 
-            // Configure DbContext with SQL Server (or your preferred database)
+
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 

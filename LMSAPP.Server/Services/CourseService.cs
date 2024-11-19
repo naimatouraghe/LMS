@@ -50,7 +50,7 @@ namespace LMSAPP.Server.Services
                     IsPublished = courseDto.IsPublished,
                     CategoryId = courseDto.CategoryId,
                     Category = category,
-                    Level = courseDto.Level,
+                    Level = (LanguageLevel)1,
                     Chapters = new List<Chapter>(),
                     Attachments = new List<Attachment>(),
                     Purchases = new List<Purchase>(),
@@ -106,7 +106,7 @@ namespace LMSAPP.Server.Services
                 course.Price = courseDto.Price;
                 course.IsPublished = courseDto.IsPublished;
                 course.CategoryId = courseDto.CategoryId;
-                course.Level = courseDto.Level;
+                course.Level = (LanguageLevel)1;
                 course.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
@@ -237,74 +237,14 @@ namespace LMSAPP.Server.Services
             var course = await _context.Courses
                 .Include(c => c.Category)
                 .Include(c => c.Teacher)
-                .Include(c => c.Chapters.OrderBy(ch => ch.Position))
+                .Include(c => c.Chapters)
                 .Include(c => c.Attachments)
                 .Include(c => c.Purchases)
                 .FirstOrDefaultAsync(c => c.Id == courseId);
 
             if (course == null) return null;
 
-            return new CourseDto
-            {
-                Id = course.Id,
-                UserId = course.UserId,
-                Title = course.Title,
-                Description = course.Description,
-                ImageUrl = course.ImageUrl,
-                Price = course.Price,
-                IsPublished = course.IsPublished,
-                CategoryId = course.CategoryId,
-                Category = new CategoryDto
-                {
-                    Id = course.Category.Id,
-                    Name = course.Category.Name,
-                    Courses = new List<CourseDto>() // Éviter la référence circulaire
-                },
-                Level = course.Level,
-                Chapters = course.Chapters.Select(ch => new ChapterDto
-                {
-                    Id = ch.Id,
-                    Title = ch.Title,
-                    Description = ch.Description,
-                    VideoUrl = ch.VideoUrl,
-                    Position = ch.Position,
-                    IsPublished = ch.IsPublished,
-                    IsFree = ch.IsFree,
-                    CourseId = ch.CourseId,
-                    Course = null!, // Éviter la référence circulaire
-                    MuxData = ch.MuxData != null ? new MuxDataDto
-                    {
-                        AssetId = ch.MuxData.AssetId,
-                        PlaybackId = ch.MuxData.PlaybackId,
-                        Chapter = null!
-                    } : null,
-                    UserProgress = new List<UserProgressDto>(),
-                    CreatedAt = ch.CreatedAt,
-                    UpdatedAt = ch.UpdatedAt
-                }).ToList(),
-                Attachments = course.Attachments.Select(a => new AttachmentDto
-                {
-                    Id = a.Id,
-                    Name = a.Name,
-                    Url = a.Url,
-                    CourseId = a.CourseId,
-                    Course = null!, // Éviter la référence circulaire
-                    CreatedAt = a.CreatedAt,
-                    UpdatedAt = a.UpdatedAt
-                }).ToList(),
-                Purchases = course.Purchases.Select(p => new PurchaseDto
-                {
-                    Id = p.Id,
-                    UserId = p.UserId,
-                    User = null!, // Éviter la référence circulaire
-                    CourseId = p.CourseId,
-                    Course = null!, // Éviter la référence circulaire
-                    CreatedAt = p.CreatedAt,
-                    UpdatedAt = p.UpdatedAt
-                }).ToList(),
-                CreatedAt = course.CreatedAt,
-                UpdatedAt = course.UpdatedAt
-            };
+            return MapCourseToDto(course);
         }
 
         public async Task<IResult> DeleteCourseAsync(Guid courseId)
@@ -506,28 +446,36 @@ namespace LMSAPP.Server.Services
             }
         }
 
-        public async Task<IResult> AddChapterAsync(Guid courseId, ChapterDto chapterDto)
+        public async Task<IResult> AddChapterAsync(Guid courseId, CreateChapterDto chapterDto)
         {
             try
             {
+                _logger.LogInformation("Starting AddChapterAsync for course {CourseId}", courseId);
+
+                // Validation explicite
+                if (string.IsNullOrWhiteSpace(chapterDto.Title))
+                {
+                    return Results.BadRequest("Title is required");
+                }
+
                 var course = await _context.Courses
                     .Include(c => c.Chapters)
-                    .Include(c => c.Category)
                     .FirstOrDefaultAsync(c => c.Id == courseId);
 
                 if (course == null)
                 {
-                    return Results.NotFound("Course not found");
+                    _logger.LogWarning("Course {CourseId} not found", courseId);
+                    return Results.NotFound($"Course with ID {courseId} not found");
                 }
 
                 var chapter = new Chapter
                 {
                     Id = Guid.NewGuid(),
-                    Title = chapterDto.Title,
-                    Description = chapterDto.Description,
-                    VideoUrl = chapterDto.VideoUrl,
-                    Position = course.Chapters.Count + 1,
-                    IsPublished = chapterDto.IsPublished,
+                    Title = chapterDto.Title.Trim(),
+                    Description = chapterDto.Description?.Trim() ?? "",
+                    VideoUrl = chapterDto.VideoUrl?.Trim() ?? "",
+                    Position = (course.Chapters?.Count ?? 0) + 1,
+                    IsPublished = false,
                     IsFree = chapterDto.IsFree,
                     CourseId = courseId,
                     Course = course,
@@ -536,54 +484,46 @@ namespace LMSAPP.Server.Services
                     UpdatedAt = DateTime.UtcNow
                 };
 
-                course.Chapters.Add(chapter);
-                await _context.SaveChangesAsync();
+                _logger.LogInformation("Adding new chapter {@Chapter}", chapter);
 
-                var createdChapterDto = new ChapterDto
+                await _context.Chapters.AddAsync(chapter);
+
+                // Sauvegarde avec gestion d'erreur explicite
+                try
                 {
-                    Id = chapter.Id,
-                    Title = chapter.Title,
-                    Description = chapter.Description,
-                    VideoUrl = chapter.VideoUrl,
-                    Position = chapter.Position,
-                    IsPublished = chapter.IsPublished,
-                    IsFree = chapter.IsFree,
-                    CourseId = chapter.CourseId,
-                    Course = new CourseDto
-                    {
-                        Id = course.Id,
-                        UserId = course.UserId,
-                        Title = course.Title,
-                        Description = course.Description,
-                        ImageUrl = course.ImageUrl,
-                        Price = course.Price,
-                        IsPublished = course.IsPublished,
-                        CategoryId = course.CategoryId,
-                        Category = new CategoryDto
-                        {
-                            Id = course.Category.Id,
-                            Name = course.Category.Name,
-                            Courses = new List<CourseDto>()
-                        },
-                        Level = course.Level,
-                        Chapters = new List<ChapterDto>(),
-                        Attachments = new List<AttachmentDto>(),
-                        Purchases = new List<PurchaseDto>(),
-                        CreatedAt = course.CreatedAt,
-                        UpdatedAt = course.UpdatedAt
-                    },
-                    MuxData = null,
-                    UserProgress = new List<UserProgressDto>(),
-                    CreatedAt = chapter.CreatedAt,
-                    UpdatedAt = chapter.UpdatedAt
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateException dbEx)
+                {
+                    _logger.LogError(dbEx, "Database error while saving chapter");
+                    return Results.Problem(
+                        title: "Database Error",
+                        detail: "Could not save the chapter to the database",
+                        statusCode: StatusCodes.Status500InternalServerError
+                    );
+                }
+
+                var response = new
+                {
+                    id = chapter.Id,
+                    title = chapter.Title,
+                    description = chapter.Description,
+                    position = chapter.Position,
+                    isFree = chapter.IsFree,
+                    courseId = chapter.CourseId
                 };
 
-                return Results.Ok(new { value = createdChapterDto });
+                _logger.LogInformation("Chapter created successfully with ID {ChapterId}", chapter.Id);
+                return Results.Ok(new { value = response });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding chapter");
-                return Results.Problem("An error occurred while adding the chapter");
+                _logger.LogError(ex, "Unexpected error in AddChapterAsync");
+                return Results.Problem(
+                    title: "Internal Server Error",
+                    detail: "An unexpected error occurred while adding the chapter",
+                    statusCode: StatusCodes.Status500InternalServerError
+                );
             }
         }
 
@@ -1214,6 +1154,50 @@ namespace LMSAPP.Server.Services
             }
         }
 
-        // Voulez-vous que je continue avec les autres méthodes ?
+        public async Task<IResult> CreateInitialCourseAsync(InitialCourseDto initialCourseDto, string userId)
+        {
+            try
+            {
+                var teacher = await _context.Users.FindAsync(userId);
+                if (teacher == null)
+                {
+                    return Results.BadRequest("Teacher not found");
+                }
+
+                // Obtenir ou créer une catégorie par défaut
+                var defaultCategory = await _context.Categories.FirstOrDefaultAsync()
+                    ?? _context.Categories.Add(new Category { Id = Guid.NewGuid(), Name = "Uncategorized" }).Entity;
+
+                var course = new Course
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    Teacher = teacher,
+                    Title = initialCourseDto.Title,
+                    Description = "",
+                    ImageUrl = "",
+                    Price = 0,
+                    IsPublished = false,
+                    CategoryId = defaultCategory.Id,
+                    Category = defaultCategory,
+                    Level = (LanguageLevel)1,
+                    Chapters = new List<Chapter>(),
+                    Attachments = new List<Attachment>(),
+                    Purchases = new List<Purchase>(),
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                _context.Courses.Add(course);
+                await _context.SaveChangesAsync();
+
+                return Results.Ok(new { id = course.Id });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating initial course");
+                return Results.Problem("An error occurred while creating the initial course");
+            }
+        }
     }
 }
