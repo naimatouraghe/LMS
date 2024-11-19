@@ -1,111 +1,124 @@
-import { useEffect, useState } from 'react';
-import { courseApi } from '../../services/api/courseApi';
-import { DataTable } from '../../components/features/DataTable';
-import { Button } from '../../components/common/Button';
-import { Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { courseApi } from '../../services/api/courseApi';
+import { useAuth } from '../../contexts/AuthContext';
+import { toast } from 'react-hot-toast';
+import { PencilIcon, Trash2Icon } from 'lucide-react';
+import { Button } from '../../components/common/Button';
 
 export default function TeacherDashboard() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [courses, setCourses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    loadTeacherCourses();
-  }, []);
-
-  const loadTeacherCourses = async () => {
-    try {
-      const response = await courseApi.getTeacherAnalytics();
-      if (response && response.value) {
-        setCourses(response.value.courses || []);
-      } else {
-        setCourses([]);
+    const loadTeacherCourses = async () => {
+      try {
+        setIsLoading(true);
+        const response = await courseApi.getUserCourses(user?.id);
+        console.log('Teacher courses:', response);
+        setCourses(response.value || []);
+      } catch (err) {
+        console.error('Error loading courses:', err);
+        setError('Erreur lors du chargement des cours');
+        toast.error('Erreur lors du chargement des cours');
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Erreur lors du chargement des cours:', error);
-      setCourses([]);
-    } finally {
-      setIsLoading(false);
+    };
+
+    if (user?.id) {
+      loadTeacherCourses();
+    }
+  }, [user?.id]);
+
+  const handleDeleteCourse = async (courseId) => {
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce cours ?')) {
+      try {
+        await courseApi.deleteCourse(courseId);
+        setCourses(courses.filter((course) => course.id !== courseId));
+        toast.success('Cours supprimé avec succès');
+      } catch (err) {
+        console.error('Error deleting course:', err);
+        toast.error('Erreur lors de la suppression du cours');
+      }
     }
   };
 
-  const columns = [
-    {
-      header: 'Title',
-      accessorKey: 'title',
-      cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <img
-            src={row.original.imageUrl}
-            alt={row.original.title}
-            className="w-10 h-10 rounded-md object-cover"
-          />
-          <span>{row.original.title}</span>
-        </div>
-      ),
-    },
-    {
-      header: 'Price',
-      accessorKey: 'price',
-      cell: ({ row }) => `${row.original.price} €`,
-    },
-    {
-      header: 'Published',
-      accessorKey: 'isPublished',
-      cell: ({ row }) => (
-        <span
-          className={`px-2 py-1 rounded-full text-xs ${
-            row.original.isPublished
-              ? 'bg-green-100 text-green-800'
-              : 'bg-yellow-100 text-yellow-800'
-          }`}
-        >
-          {row.original.isPublished ? 'Published' : 'Draft'}
-        </span>
-      ),
-    },
-    {
-      header: 'Actions',
-      cell: ({ row }) => (
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate(`/teacher/courses/${row.original.id}`)}
-          >
-            Edit
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate(`/courses/${row.original.id}`)}
-          >
-            Preview
-          </Button>
-        </div>
-      ),
-    },
-  ];
-
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">My courses</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Mes cours</h1>
         <Button onClick={() => navigate('/teacher/courses/new')}>
-          <Plus className="w-4 h-4 mr-2" />
-          Create a course
+          + Create a course
         </Button>
       </div>
 
-      <div className="bg-white rounded-lg shadow">
-        <DataTable
-          columns={columns}
-          data={courses}
-          isLoading={isLoading}
-          noResultsMessage="Aucun cours trouvé"
-        />
-      </div>
+      {isLoading ? (
+        <div className="text-center py-4">Chargement...</div>
+      ) : error ? (
+        <div className="text-red-500 text-center py-4">{error}</div>
+      ) : (
+        <div className="bg-white rounded-lg shadow">
+          <table className="min-w-full">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left p-4">TITLE</th>
+                <th className="text-left p-4">PRICE</th>
+                <th className="text-left p-4">PUBLISHED</th>
+                <th className="text-right p-4">ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {courses.length === 0 ? (
+                <tr>
+                  <td colSpan="4" className="text-center py-4 text-gray-500">
+                    Aucun cours trouvé
+                  </td>
+                </tr>
+              ) : (
+                courses.map((course) => (
+                  <tr key={course.id} className="border-b hover:bg-gray-50">
+                    <td className="p-4">{course.title}</td>
+                    <td className="p-4">{course.price}€</td>
+                    <td className="p-4">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs ${
+                          course.isPublished
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}
+                      >
+                        {course.isPublished ? 'Published' : 'Draft'}
+                      </span>
+                    </td>
+                    <td className="p-4 text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          navigate(`/teacher/courses/${course.id}`)
+                        }
+                      >
+                        <PencilIcon className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteCourse(course.id)}
+                      >
+                        <Trash2Icon className="w-4 h-4 text-red-500" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
