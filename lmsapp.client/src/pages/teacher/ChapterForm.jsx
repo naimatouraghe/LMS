@@ -6,7 +6,7 @@ import { Label } from '../../components/features/Label';
 import { Checkbox } from '../../components/features/Checkbox';
 import { PencilIcon, LayoutGrid, Video, Eye } from 'lucide-react';
 import { courseApi } from '../../services/api/courseApi';
-
+import { toast } from 'react-hot-toast';
 export default function ChapterForm() {
   const navigate = useNavigate();
   const { courseId } = useParams();
@@ -14,6 +14,7 @@ export default function ChapterForm() {
   const [error, setError] = useState(null);
   const [course, setCourse] = useState(null);
   const [isLoadingCourse, setIsLoadingCourse] = useState(true);
+  const [chapters, setChapters] = useState([]);
 
   console.log('CourseId from params:', courseId); // Debug
 
@@ -69,6 +70,25 @@ export default function ChapterForm() {
     }
   }, [courseId]);
 
+  // Ajouter un useEffect pour charger les chapitres existants
+  useEffect(() => {
+    const loadChapters = async () => {
+      try {
+        const response = await courseApi.getCourseChapters(courseId);
+        if (response?.value) {
+          setChapters(response.value);
+        }
+      } catch (error) {
+        console.error('Error loading chapters:', error);
+        toast.error('Erreur lors du chargement des chapitres');
+      }
+    };
+
+    if (courseId) {
+      loadChapters();
+    }
+  }, [courseId]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -80,28 +100,33 @@ export default function ChapterForm() {
         return;
       }
 
-      // Structure simplifiée pour la création
       const createChapterDto = {
         title: chapter.title.trim(),
         description: chapter.description?.trim() || '',
         videoUrl: chapter.videoUrl?.trim() || '',
         isFree: chapter.isFree || false,
-        courseId: courseId,
+        position: chapters.length + 1, // Ajouter la position
       };
 
-      console.log('Sending chapter data:', createChapterDto);
-
       const response = await courseApi.addChapter(courseId, createChapterDto);
-      console.log('Response from server:', response);
 
-      if (response) {
+      if (response?.value) {
+        toast.success('Chapitre créé avec succès');
+        // Recharger les chapitres après création
+        const updatedChapters = await courseApi.getCourseChapters(courseId);
+        if (updatedChapters?.value) {
+          setChapters(updatedChapters.value);
+        }
         navigate(`/teacher/courses/${courseId}`);
+      } else {
+        throw new Error('Réponse invalide du serveur');
       }
     } catch (err) {
-      console.error('Full error:', err);
-      setError(
-        err.response?.data?.message || 'Erreur lors de la création du chapitre'
-      );
+      console.error('Error creating chapter:', err);
+      const errorMessage =
+        err.response?.data?.message || 'Erreur lors de la création du chapitre';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }

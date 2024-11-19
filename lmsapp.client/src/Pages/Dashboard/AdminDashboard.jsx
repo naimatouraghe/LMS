@@ -5,6 +5,7 @@ import { Chart as ChartJS } from 'chart.js/auto';
 import { Line, Doughnut } from 'react-chartjs-2';
 
 const AdminDashboard = () => {
+  // need a fix
   const { user } = useAuth();
   const [statistics, setStatistics] = useState(null);
   const [users, setUsers] = useState([]);

@@ -4,7 +4,15 @@ import { Link } from 'react-router-dom';
 const Navbar = ({ setIsMenuOpen }) => {
   return (
     <nav className="bg-gray-800 text-white p-4 flex justify-between items-center">
-      <h1 className="text-xl">LMS App</h1>
+      <div className="flex items-center justify-center">
+        {' '}
+        {/* Ajout de justify-center */}
+        <img
+          src="/logo.png"
+          alt="EduLang Logo"
+          className="h-8 w-auto dark:invert" // Changé de h-8 à h-16 pour doubler la taille
+        />
+      </div>
       <div className="hidden lg:flex space-x-4">
         <Link to="/" className="hover:text-gray-300">
           Dashboard

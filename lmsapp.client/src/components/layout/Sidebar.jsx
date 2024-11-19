@@ -9,8 +9,15 @@ const Sidebar = () => {
 
   return (
     <div className="flex flex-col h-full p-4">
-      <div className="mb-8">
-        <h1 className="text-white text-2xl font-bold">LMSAPP</h1>
+      <div className="mb-12">
+        <div className="flex items-center">
+          <img
+            src="/logo.png" // Chemin direct depuis public
+            // OU si dans un sous-dossier : "/images/logo.png"
+            alt="LMSAPP Logo"
+            className="h-14 w-auto dark:invert" // ajout de dark:invert si vous voulez que le logo s'inverse en mode sombre
+          />
+        </div>
         {user && <p className="text-gray-400 mt-2">Welcome, {user.fullName}</p>}
       </div>
 
