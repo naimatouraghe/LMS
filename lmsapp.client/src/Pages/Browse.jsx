@@ -253,7 +253,7 @@ const Browse = () => {
         <h1 className="text-3xl font-bold text-slate-800 mb-8">
           Explorez nos cours
         </h1>
-
+        {/* need a fix */}
         <div className="mb-8">
           <Filters {...filterProps} />
         </div>

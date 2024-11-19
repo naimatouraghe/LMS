@@ -9,6 +9,7 @@ import { Select } from '../../components/features/Select';
 import { useNavigate, useParams } from 'react-router-dom';
 import { courseApi } from '../../services/api/courseApi';
 import { useAuth } from '../../contexts/AuthContext';
+import { toast } from 'react-hot-toast';
 
 // Définir l'enum des niveaux de langue
 const LANGUAGE_LEVELS = {
@@ -67,6 +68,38 @@ export default function CoursesDashboard() {
     }
   }, [courseId, navigate]);
 
+  useEffect(() => {
+    const loadCourseAndChapters = async () => {
+      if (!courseId) return;
+
+      try {
+        setIsLoading(true);
+
+        // Charger les données du cours
+        const courseResponse = await courseApi.getCourse(courseId);
+
+        // Charger les chapitres
+        const chaptersResponse = await courseApi.getCourseChapters(courseId);
+        console.log('Chapitres chargés:', chaptersResponse);
+
+        if (courseResponse) {
+          setCourse((prev) => ({
+            ...prev,
+            ...courseResponse,
+            chapters: chaptersResponse?.value || [],
+          }));
+        }
+      } catch (err) {
+        console.error('Erreur lors du chargement du cours:', err);
+        setError('Erreur lors du chargement du cours et des chapitres');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadCourseAndChapters();
+  }, [courseId]);
+
   const updateCourse = (field, value) => {
     setCourse((prev) => {
       const updates = {
@@ -94,27 +127,41 @@ export default function CoursesDashboard() {
       setIsLoading(true);
       setError(null);
 
-      if (!course.title || !course.categoryId || !user?.id) {
+      if (!course.title || !user?.id) {
         setError('Veuillez remplir tous les champs obligatoires');
         return;
       }
 
-      const response = await courseApi.updateCourse(courseId, {
-        courseDto: {
-          ...course,
-          price: parseFloat(course.price) || 0,
-        },
-      });
+      // Structurer les données selon le DTO attendu par le backend
+      const courseDto = {
+        userId: user.id,
+        title: course.title,
+        description: course.description || '',
+        imageUrl: course.imageUrl || '',
+        price: parseFloat(course.price) || 0,
+        isPublished: course.isPublished || false,
+        categoryId: course.categoryId || null,
+        level: course.level || 0,
+        category: course.category || null,
+        chapters: course.chapters || [],
+      };
+
+      console.log('Sending course update:', courseDto);
+
+      const response = await courseApi.updateCourse(courseId, courseDto);
 
       console.log('Course updated:', response);
-      navigate(`/teacher/courses/${courseId}/chapters/new`);
+
+      if (response) {
+        toast.success('Cours mis à jour avec succès');
+        navigate('/teacher');
+      }
     } catch (err) {
       console.error('Error updating course:', err);
       setError(
-        err.response?.data?.errors?.['$']?.[0] ||
-          err.response?.data?.errors?.courseDto?.[0] ||
-          'Erreur lors de la mise à jour du cours'
+        err.response?.data?.message || 'Erreur lors de la mise à jour du cours'
       );
+      toast.error('Erreur lors de la mise à jour du cours');
     } finally {
       setIsLoading(false);
     }
@@ -303,22 +350,35 @@ export default function CoursesDashboard() {
               </div>
 
               <div className="space-y-4">
-                {course.chapters?.map((chapter) => (
-                  <div
-                    key={chapter.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-                  >
-                    <span>{chapter.title}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                        Published
-                      </span>
-                      <Button variant="ghost" size="sm">
-                        <PencilIcon className="w-4 h-4" />
-                      </Button>
+                {course.chapters && course.chapters.length > 0 ? (
+                  course.chapters.map((chapter, index) => (
+                    <div
+                      key={chapter.id}
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-700 rounded-full">
+                          {index + 1}
+                        </span>
+                        <div>
+                          <h4 className="font-medium">{chapter.title}</h4>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                          Published
+                        </span>
+                        <Button variant="ghost" size="sm">
+                          <PencilIcon className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500 italic">
+                    No chapters available
+                  </p>
+                )}
 
                 <p className="text-sm text-gray-500 italic">
                   Drag and drop to reorder chapters
