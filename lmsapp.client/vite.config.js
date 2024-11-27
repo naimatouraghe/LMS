@@ -48,6 +48,7 @@ export default defineConfig({
       '@services': fileURLToPath(new URL('./src/services', import.meta.url)),
       '@assets': fileURLToPath(new URL('./src/assets', import.meta.url)),
     },
+    extensions: ['.js', '.jsx', '.json'],
   },
   server: {
     proxy: {
