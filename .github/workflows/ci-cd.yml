@@ -44,10 +44,16 @@ jobs:
       - name: List directory structure
         working-directory: ./lmsapp.client
         run: |
+          echo "Current directory:"
           pwd
+          echo "\nRoot directory content:"
           ls -la
+          echo "\nSrc directory content:"
           ls -la src/
-          ls -la src/pages || echo "No pages directory found"
+          echo "\nPages directory content:"
+          ls -la src/pages/ || echo "Pages directory not found"
+          echo "\nContent of App.jsx:"
+          cat src/App.jsx
 
       - name: Install React dependencies
         working-directory: ./lmsapp.client
