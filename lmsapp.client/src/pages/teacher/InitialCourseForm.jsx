@@ -13,13 +13,11 @@ export default function InitialCourseForm() {
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
 
-  // Charger les catégories au montage du composant
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const response = await courseApi.getCategories();
         setCategories(response || []);
-        // Sélectionner la première catégorie par défaut
         if (response && response.length > 0) {
           setSelectedCategory(response[0]);
         }
@@ -43,19 +41,17 @@ export default function InitialCourseForm() {
         return;
       }
 
-      console.log('Submitting title:', title.trim());
-
       const initialCourseDto = {
         title: title.trim(),
+        categoryId: selectedCategory?.id,
       };
 
+      console.log('Creating initial course with data:', initialCourseDto);
       const response = await courseApi.createInitialCourse(initialCourseDto);
-      console.log('Initial course created:', response);
+      console.log('Response from course creation:', response);
 
       if (response?.id) {
-        // Stockons le titre dans le localStorage pour le récupérer dans le dashboard
         localStorage.setItem('initialCourseTitle', title.trim());
-
         toast.success('Cours créé avec succès');
         navigate(`/teacher/courses/${response.id}`);
       }
@@ -74,10 +70,10 @@ export default function InitialCourseForm() {
     <div className="max-w-2xl mx-auto p-6">
       <div className="space-y-4">
         <div>
-          <h1 className="text-2xl font-bold">Name your course</h1>
+          <h1 className="text-2xl font-bold">Nommez votre cours</h1>
           <p className="text-gray-600">
-            What would you like to name your course? Don't worry, you can always
-            change this later.
+            Comment souhaitez-vous nommer votre cours ? Ne vous inquiétez pas,
+            vous pourrez toujours le modifier plus tard.
           </p>
         </div>
 
@@ -88,19 +84,40 @@ export default function InitialCourseForm() {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-sm font-medium mb-2">
-              Course title
+              Titre du cours
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. 'Advanced Web Development'"
+              placeholder="ex: 'Développement Web Avancé'"
               className="w-full p-3 border rounded-md"
               required
             />
             <p className="mt-1 text-sm text-gray-500">
-              What will you teach in this course?
+              Qu'allez-vous enseigner dans ce cours ?
             </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Catégorie</label>
+            <select
+              value={selectedCategory?.id || ''}
+              onChange={(e) => {
+                const category = categories.find(
+                  (c) => c.id === e.target.value
+                );
+                setSelectedCategory(category);
+              }}
+              className="w-full p-3 border rounded-md"
+              required
+            >
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="flex justify-end gap-4">
@@ -110,14 +127,14 @@ export default function InitialCourseForm() {
               className="px-4 py-2 text-gray-700 border rounded-md hover:bg-gray-50"
               disabled={isLoading}
             >
-              Cancel
+              Annuler
             </button>
             <button
               type="submit"
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
               disabled={isLoading}
             >
-              {isLoading ? 'Creating...' : 'Continue'}
+              {isLoading ? 'Création...' : 'Continuer'}
             </button>
           </div>
         </form>

@@ -72,57 +72,6 @@ export default function CoursesDashboard() {
     }
   }, [courseId, navigate]);
 
-  useEffect(() => {
-    const loadCourseAndChapters = async () => {
-      if (!courseId) return;
-
-      try {
-        setIsLoading(true);
-        setError(null);
-
-        // Charger les données du cours
-        const courseResponse = await courseApi.getCourse(courseId);
-        console.log('Course data loaded:', courseResponse);
-
-        // Charger les chapitres
-        const chaptersResponse = await courseApi.getCourseChapters(courseId);
-        console.log('Chapters loaded:', chaptersResponse);
-
-        if (courseResponse) {
-          // S'assurer que toutes les données sont correctement initialisées
-          const updatedCourse = {
-            ...courseResponse,
-            title: courseResponse.title || '',
-            description: courseResponse.description || '',
-            imageUrl: courseResponse.imageUrl || '',
-            price: courseResponse.price?.toString() || '0',
-            categoryId: courseResponse.categoryId || '',
-            category: {
-              id: courseResponse.category?.id || '',
-              name: courseResponse.category?.name || '',
-              courses: courseResponse.category?.courses || [],
-            },
-            level: courseResponse.level || LANGUAGE_LEVELS.A1,
-            isPublished: courseResponse.isPublished || false,
-            chapters: chaptersResponse?.value || [],
-            attachments: courseResponse.attachments || [],
-            purchases: courseResponse.purchases || [],
-          };
-
-          console.log('Setting course state:', updatedCourse);
-          setCourse(updatedCourse);
-        }
-      } catch (err) {
-        console.error('Error loading course:', err);
-        setError('Erreur lors du chargement du cours');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadCourseAndChapters();
-  }, [courseId]);
-
   const updateCourse = (field, value) => {
     setCourse((prev) => {
       const updates = {
@@ -150,64 +99,27 @@ export default function CoursesDashboard() {
       setIsLoading(true);
       setError(null);
 
-      if (!user?.id || !course.title || !course.categoryId) {
-        toast.error('Missing required fields');
+      if (!course.title || !course.categoryId || !user?.id) {
+        setError('Veuillez remplir tous les champs obligatoires');
         return;
       }
 
-      // Préparer les données requises selon la structure exacte du CourseDto
-      const courseDto = {
-        id: courseId,
-        userId: user.id, // required
-        title: course.title.trim(), // required
-        description: course.description || '',
-        imageUrl: course.imageUrl || '',
-        price: parseFloat(course.price) || 0,
-        isPublished: Boolean(course.isPublished),
-        categoryId: course.categoryId,
-        category: {
-          // required
-          id: course.categoryId,
-          name: course.category?.name || '',
-          courses: [],
-        },
-        level: parseInt(course.level) || 0,
-        chapters: (course.chapters || []).map((chapter) => ({
-          // required
-          id: chapter.id,
-          title: chapter.title,
-          description: chapter.description || '',
-          videoUrl: chapter.videoUrl || '',
-          position: chapter.position,
-          isPublished: chapter.isPublished || false,
-          isFree: chapter.isFree || false,
-          courseId: courseId,
-          course: null,
-          userProgress: [],
-          muxData: null,
-        })),
-        attachments: course.attachments || [],
-        purchases: course.purchases || [],
-        createdAt: course.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      // Envoyer la requête avec le wrapper courseDto
       const response = await courseApi.updateCourse(courseId, {
-        courseDto: courseDto, // Wrapper le DTO comme attendu par le backend
+        courseDto: {
+          ...course,
+          price: parseFloat(course.price) || 0,
+        },
       });
 
-      if (response) {
-        setCourse((prev) => ({
-          ...prev,
-          ...response,
-          price: response.price?.toString() || '0',
-        }));
-        toast.success('Cours mis à jour avec succès');
-      }
+      console.log('Course updated:', response);
+      navigate(`/teacher/courses/${courseId}/chapters/new`);
     } catch (err) {
       console.error('Error updating course:', err);
-      toast.error('Erreur lors de la mise à jour du cours');
+      setError(
+        err.response?.data?.errors?.['$']?.[0] ||
+          err.response?.data?.errors?.courseDto?.[0] ||
+          'Erreur lors de la mise à jour du cours'
+      );
     } finally {
       setIsLoading(false);
     }

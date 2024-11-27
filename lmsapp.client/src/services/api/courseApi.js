@@ -64,30 +64,27 @@ export const courseApi = {
       // Créer la structure exacte attendue par le backend
       const requestData = {
         courseDto: {
-          // Premier niveau : wrapper courseDto
-          userId: courseDto.userId, // Champ required
-          title: courseDto.title.trim(), // Champ required
+          userId: courseDto.userId,
+          title: courseDto.title.trim(),
           category: {
-            // Champ required
             id: courseDto.categoryId,
             name: courseDto.category?.name || '',
             courses: [],
           },
-          chapters: courseDto.chapters.map((chapter) => ({
-            // Champ required
-            id: chapter.id,
-            title: chapter.title,
-            description: chapter.description || '',
-            videoUrl: chapter.videoUrl || '',
-            position: chapter.position,
-            isPublished: chapter.isPublished || false,
-            isFree: chapter.isFree || false,
-            courseId: courseId,
-            course: null,
-            userProgress: [],
-            muxData: null,
-          })),
-          // Champs optionnels
+          chapters:
+            courseDto.chapters?.map((chapter) => ({
+              id: chapter.id,
+              title: chapter.title,
+              description: chapter.description || '',
+              videoUrl: chapter.videoUrl || '',
+              position: chapter.position,
+              isPublished: chapter.isPublished || false,
+              isFree: chapter.isFree || false,
+              courseId: courseId,
+              course: null,
+              userProgress: [],
+              muxData: null,
+            })) || [],
           id: courseId,
           description: courseDto.description || '',
           imageUrl: courseDto.imageUrl || '',
@@ -95,13 +92,14 @@ export const courseApi = {
           isPublished: Boolean(courseDto.isPublished),
           categoryId: courseDto.categoryId,
           level: Number(courseDto.level) || 0,
-          attachments: [],
-          purchases: [],
+          attachments: courseDto.attachments || [],
+          purchases: courseDto.purchases || [],
           createdAt: courseDto.createdAt || new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
       };
 
+      console.log('Updating course:', courseId);
       console.log('Sending request data:', requestData);
 
       const response = await axios.put(`/Course/${courseId}`, requestData);

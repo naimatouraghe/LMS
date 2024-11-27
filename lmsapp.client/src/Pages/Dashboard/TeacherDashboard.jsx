@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { courseApi } from '../../services/api/courseApi';
 import { useAuth } from '../../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
-import { PencilIcon, Trash2Icon } from 'lucide-react';
+import { PencilIcon, Trash2Icon, Plus } from 'lucide-react';
 import { Button } from '../../components/common/Button';
 
 export default function TeacherDashboard() {
@@ -49,10 +49,11 @@ export default function TeacherDashboard() {
 
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Mes cours</h1>
         <Button onClick={() => navigate('/teacher/courses/new')}>
-          + Create a course
+          <Plus className="w-4 h-4 mr-2" />
+          Créer un cours
         </Button>
       </div>
 
@@ -65,10 +66,10 @@ export default function TeacherDashboard() {
           <table className="min-w-full">
             <thead>
               <tr className="border-b">
-                <th className="text-left p-4">TITLE</th>
-                <th className="text-left p-4">PRICE</th>
-                <th className="text-left p-4">PUBLISHED</th>
-                <th className="text-right p-4">ACTIONS</th>
+                <th className="text-left p-4">Titre</th>
+                <th className="text-left p-4">Prix</th>
+                <th className="text-left p-4">Publié</th>
+                <th className="text-right p-4">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -81,7 +82,16 @@ export default function TeacherDashboard() {
               ) : (
                 courses.map((course) => (
                   <tr key={course.id} className="border-b hover:bg-gray-50">
-                    <td className="p-4">{course.title}</td>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={course.imageUrl}
+                          alt={course.title}
+                          className="w-10 h-10 rounded-md object-cover"
+                        />
+                        <span>{course.title}</span>
+                      </div>
+                    </td>
                     <td className="p-4">{course.price}€</td>
                     <td className="p-4">
                       <span
@@ -91,7 +101,7 @@ export default function TeacherDashboard() {
                             : 'bg-yellow-100 text-yellow-800'
                         }`}
                       >
-                        {course.isPublished ? 'Published' : 'Draft'}
+                        {course.isPublished ? 'Publié' : 'Brouillon'}
                       </span>
                     </td>
                     <td className="p-4 text-right">
