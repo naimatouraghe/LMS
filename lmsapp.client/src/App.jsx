@@ -1,9 +1,9 @@
 import { Route, Routes, Navigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout.jsx';
-import Browse from '@/pages/Browse.jsx';
-import TeacherDashboard from '@/pages/Dashboard/TeacherDashboard.jsx';
-import AdminDashboard from '@/pages/Dashboard/AdminDashboard.jsx';
-import Register from '@/pages/Register.jsx';
+import Browse from '@/pages/Browse';
+import TeacherDashboard from '@/pages/Dashboard/TeacherDashboard';
+import AdminDashboard from '@/pages/Dashboard/AdminDashboard';
+import Register from '@/pages/Register';
 import Login from '@/pages/Login.jsx';
 import Profile from '@/pages/Profile.jsx';
 import Course from '@/pages/Course.jsx';
