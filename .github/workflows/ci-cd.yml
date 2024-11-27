@@ -41,6 +41,14 @@ jobs:
           cache: "npm"
           cache-dependency-path: "./lmsapp.client/package-lock.json"
 
+      - name: List directory structure
+        working-directory: ./lmsapp.client
+        run: |
+          pwd
+          ls -la
+          ls -la src/
+          ls -la src/pages || echo "No pages directory found"
+
       - name: Install React dependencies
         working-directory: ./lmsapp.client
         run: |
@@ -50,9 +58,10 @@ jobs:
       - name: Build React
         working-directory: ./lmsapp.client
         run: |
-          VITE_DEV_SERVER_HTTPS=false npm run build
+          VITE_DEV_SERVER_HTTPS=false npm run build --debug
         env:
           CI: true
+          DEBUG: vite:*
 
       # Build de la solution complète
       - name: Build Solution
