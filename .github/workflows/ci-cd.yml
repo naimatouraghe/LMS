@@ -79,3 +79,17 @@ jobs:
         run: |
           echo "Executing additional release validation steps..."
           # Ici vous pourrez ajouter des tests supplémentaires spécifiques aux releases
+
+      - name: Debug file structure
+        working-directory: ./lmsapp.client
+        run: |
+          echo "Current directory structure:"
+          pwd
+          echo "\nContents of src/pages:"
+          ls -la src/pages/
+          echo "\nFile permissions:"
+          stat src/pages/Browse.jsx || echo "File not found"
+          echo "\nGit status:"
+          git status
+          echo "\nGit LFS status:"
+          git lfs status || echo "Git LFS not installed"

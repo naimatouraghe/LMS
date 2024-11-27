@@ -49,6 +49,7 @@ export default defineConfig({
       '@assets': fileURLToPath(new URL('./src/assets', import.meta.url)),
     },
     extensions: ['.js', '.jsx', '.json'],
+    preserveSymlinks: true,
   },
   server: {
     proxy: {
@@ -61,5 +62,13 @@ export default defineConfig({
     },
     port: 5173,
     https: getHttpsConfig(),
+  },
+  build: {
+    sourcemap: true,
+    rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL('./index.html', import.meta.url)),
+      },
+    },
   },
 });
