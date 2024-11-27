@@ -1,19 +1,19 @@
 import { Route, Routes, Navigate } from 'react-router-dom';
-import Layout from '@/components/layout/Layout';
-import Browse from '@/pages/Browse';
-import TeacherDashboard from '@/pages/Dashboard/TeacherDashboard';
-import AdminDashboard from '@/pages/Dashboard/AdminDashboard';
-import Register from '@/pages/Register';
-import Login from '@/pages/Login';
-import Profile from '@/pages/Profile';
-import Course from '@/pages/Course';
-import { useAuth } from '@/contexts/AuthContext';
+import Layout from '@/components/layout/Layout.jsx';
+import Browse from '@/pages/Browse.jsx';
+import TeacherDashboard from '@/pages/Dashboard/TeacherDashboard.jsx';
+import AdminDashboard from '@/pages/Dashboard/AdminDashboard.jsx';
+import Register from '@/pages/Register.jsx';
+import Login from '@/pages/Login.jsx';
+import Profile from '@/pages/Profile.jsx';
+import Course from '@/pages/Course.jsx';
+import { useAuth } from '@/contexts/AuthContext.jsx';
 import { Toaster } from 'react-hot-toast';
-import AnalyticsDashboard from '@/pages/Dashboard/AnalyticsDashboard';
-import CoursesDashboard from '@/pages/Dashboard/CoursesDashboard';
-import ChapterForm from '@/pages/teacher/ChapterForm';
-import InitialCourseForm from '@/pages/teacher/InitialCourseForm';
-import Dashboard from '@/pages/Dashboard';
+import AnalyticsDashboard from '@/pages/Dashboard/AnalyticsDashboard.jsx';
+import CoursesDashboard from '@/pages/Dashboard/CoursesDashboard.jsx';
+import ChapterForm from '@/pages/teacher/ChapterForm.jsx';
+import InitialCourseForm from '@/pages/teacher/InitialCourseForm.jsx';
+import Dashboard from '@/pages/Dashboard.jsx';
 // Composant de protection des routes
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, isAuthenticated } = useAuth();
