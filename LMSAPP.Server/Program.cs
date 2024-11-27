@@ -2,13 +2,14 @@ using LMSAPP.Server.Data;
 using LMSAPP.Server.Models;
 using LMSAPP.Server.Services;
 using LMSAPP.Server.Services.Interfaces;
+using LMSAPP.Server.Validators;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using Stripe;
 using System.Text;
-using Microsoft.OpenApi.Models;
 using System.Text.Json.Serialization;
 
 namespace LMSAPP.Server
@@ -73,36 +74,44 @@ namespace LMSAPP.Server
             // Add services to the container
             builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
             {
-                options.Password.RequiredLength = 6;
-                options.Password.RequireDigit = true;
-                options.Password.RequireUppercase = true;
-                options.Password.RequireLowercase = true;
-                options.Password.RequireNonAlphanumeric = false;
-
+                // Garder uniquement les autres configurations
                 options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
                 options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.AllowedForNewUsers = true;
 
                 options.User.RequireUniqueEmail = true;
+                options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
+
+                options.SignIn.RequireConfirmedEmail = true;
+                options.SignIn.RequireConfirmedAccount = true;
             })
             .AddEntityFrameworkStores<ApplicationDbContext>()
-            .AddSignInManager()
-            .AddDefaultTokenProviders();
+            .AddDefaultTokenProviders()
+            .AddPasswordValidator<CustomPasswordValidator<ApplicationUser>>();
 
-            // Register services
-            builder.Services.AddScoped<IAuthService, AuthService>();
-            builder.Services.AddScoped<ICourseService, CourseService>();
-            builder.Services.AddScoped<IPaymentService, PaymentService>();
-            builder.Services.AddScoped<IProgressService, ProgressService>();
-            builder.Services.AddScoped<ITokenService, Services.TokenService>();
+            // 5. Configuration des cookies pour CSRF et XSS
+            builder.Services.ConfigureApplicationCookie(options =>
+            {
+                options.Cookie.HttpOnly = true;
+                options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                options.Cookie.SameSite = SameSiteMode.Strict;
+                options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
+                options.SlidingExpiration = true;
+            });
 
-            // Ajouter HttpContextAccessor
-            builder.Services.AddHttpContextAccessor();
+            // 6. Configuration du hachage des mots de passe (PBKDF2)
+            builder.Services.Configure<PasswordHasherOptions>(options =>
+            {
+                options.IterationCount = 250000;
+            });
 
-            // Configure JWT Authentication
-            var key = builder.Configuration["Jwt:Key"];
-            var issuer = builder.Configuration["Jwt:Issuer"];
-            var audience = builder.Configuration["Jwt:Audience"];
+            // 7. Configuration des tokens
+            builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
+            {
+                options.TokenLifespan = TimeSpan.FromHours(24);
+            });
 
+            // 8. Configuration JWT
             var jwtSettings = builder.Configuration.GetSection("JWT");
             if (string.IsNullOrEmpty(jwtSettings["Secret"]))
             {
@@ -126,9 +135,29 @@ namespace LMSAPP.Server
                     ValidAudience = jwtSettings["ValidAudience"],
                     IssuerSigningKey = new SymmetricSecurityKey(
                         Encoding.UTF8.GetBytes(jwtSettings["Secret"] ?? throw new InvalidOperationException("JWT Secret is null"))
-                    )
+                    ),
+                    ClockSkew = TimeSpan.Zero
                 };
             });
+
+            // 9. Ajout de l'antiforgery pour CSRF
+            builder.Services.AddAntiforgery(options =>
+            {
+                options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                options.Cookie.HttpOnly = true;
+                options.Cookie.SameSite = SameSiteMode.Strict;
+                options.HeaderName = "X-XSRF-TOKEN";
+            });
+
+            // Register services
+            builder.Services.AddScoped<IAuthService, AuthService>();
+            builder.Services.AddScoped<ICourseService, CourseService>();
+            builder.Services.AddScoped<IPaymentService, PaymentService>();
+            builder.Services.AddScoped<IProgressService, ProgressService>();
+            builder.Services.AddScoped<ITokenService, Services.TokenService>();
+
+            // Ajouter HttpContextAccessor
+            builder.Services.AddHttpContextAccessor();
 
             // Add authorization policies for roles
             builder.Services.AddAuthorization(options =>
@@ -152,6 +181,7 @@ namespace LMSAPP.Server
                     builder =>
                     {
                         builder
+                            /* .AllowAnyOrigin()*/
                             .WithOrigins("https://localhost:5173", "http://localhost:5173")
                             .AllowAnyMethod()
                             .AllowAnyHeader()

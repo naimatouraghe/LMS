@@ -14,6 +14,7 @@ const Register = () => {
     role: 'Student',
   });
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e) => {
@@ -27,18 +28,28 @@ const Register = () => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    setSuccess('');
 
     try {
       await register(formData);
-      navigate('/login', {
-        state: { message: 'Inscription réussie. Veuillez vous connecter.' },
-      });
+      setSuccess('Account created successfully!');
+      setTimeout(() => {
+        navigate('/login', {
+          state: { message: 'Registration successful. Please login.' },
+        });
+      }, 3000);
     } catch (err) {
       console.error('Register error:', err);
-      setError(
-        err.response?.data?.detail ||
-          "Une erreur est survenue lors de l'inscription"
-      );
+      if (err.response?.data?.errors) {
+        const uniqueErrors = new Set(
+          err.response.data.errors.map((e) => e.message)
+        );
+        setError(Array.from(uniqueErrors).join('\n'));
+      } else {
+        setError(
+          err.response?.data?.message || 'An error occurred during registration'
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -47,36 +58,42 @@ const Register = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow">
-        {/* En-tête */}
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Créer un compte
+            Create Account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Ou{' '}
+            Or{' '}
             <Link
               to="/login"
               className="font-medium text-indigo-600 hover:text-indigo-500"
             >
-              connectez-vous à votre compte
+              sign in to your account
             </Link>
           </p>
         </div>
 
-        {/* Formulaire */}
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {/* Message d'erreur */}
           {error && (
             <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-              <span className="block sm:inline">{error}</span>
+              {error.split('\n').map((err, index) => (
+                <p key={index} className="block text-sm">
+                  • {err}
+                </p>
+              ))}
             </div>
           )}
 
-          {/* Champs de formulaire */}
+          {success && (
+            <div className="bg-green-50 border border-green-400 text-green-700 px-4 py-3 rounded relative">
+              <p className="block text-sm">{success}</p>
+            </div>
+          )}
+
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <label htmlFor="fullName" className="sr-only">
-                Nom complet
+                Full Name
               </label>
               <input
                 id="fullName"
@@ -85,8 +102,12 @@ const Register = () => {
                 required
                 value={formData.fullName}
                 onChange={handleChange}
+                onInvalid={(e) =>
+                  e.target.setCustomValidity('Please enter your full name')
+                }
+                onInput={(e) => e.target.setCustomValidity('')}
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Nom complet"
+                placeholder="Full Name"
               />
             </div>
             <div>
@@ -100,13 +121,19 @@ const Register = () => {
                 required
                 value={formData.email}
                 onChange={handleChange}
+                onInvalid={(e) =>
+                  e.target.setCustomValidity(
+                    'Please enter a valid email address'
+                  )
+                }
+                onInput={(e) => e.target.setCustomValidity('')}
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Adresse email"
+                placeholder="Email address"
               />
             </div>
             <div>
               <label htmlFor="password" className="sr-only">
-                Mot de passe
+                Password
               </label>
               <input
                 id="password"
@@ -115,13 +142,16 @@ const Register = () => {
                 required
                 value={formData.password}
                 onChange={handleChange}
+                onInvalid={(e) =>
+                  e.target.setCustomValidity('Please enter your password')
+                }
+                onInput={(e) => e.target.setCustomValidity('')}
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Mot de passe"
+                placeholder="Password"
               />
             </div>
           </div>
 
-          {/* Bouton de soumission */}
           <button
             type="submit"
             disabled={isLoading}
@@ -134,7 +164,7 @@ const Register = () => {
                 <LoadingSpinner />
               </span>
             )}
-            {isLoading ? 'Inscription...' : "S'inscrire"}
+            {isLoading ? 'Registering...' : 'Register'}
           </button>
         </form>
       </div>

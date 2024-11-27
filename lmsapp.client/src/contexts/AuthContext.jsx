@@ -135,6 +135,16 @@ export const AuthProvider = ({ children }) => {
     authApi.setUser(userData);
   };
 
+  const register = async (formData) => {
+    try {
+      const result = await authApi.register(formData);
+      return result;
+    } catch (error) {
+      // Propager l'erreur pour que le composant Register puisse la gérer
+      throw error;
+    }
+  };
+
   const value = {
     user,
     isAuthenticated,
@@ -142,6 +152,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     updateUser,
+    register,
   };
 
   if (isLoading) {
