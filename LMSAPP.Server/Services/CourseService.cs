@@ -94,25 +94,76 @@ namespace LMSAPP.Server.Services
         {
             try
             {
-                var course = await _context.Courses.FindAsync(courseId);
+                var course = await _context.Courses
+                    .Include(c => c.Category)
+                    .Include(c => c.Chapters)
+                    .FirstOrDefaultAsync(c => c.Id == courseId);
+
                 if (course == null)
                 {
                     return Results.NotFound("Course not found");
                 }
 
+                // Mise à jour des propriétés simples
                 course.Title = courseDto.Title;
-                course.Description = courseDto.Description;
-                course.ImageUrl = courseDto.ImageUrl;
-                course.Price = courseDto.Price;
+                course.Description = courseDto.Description ?? "";
+                course.ImageUrl = courseDto.ImageUrl ?? "";
+                course.Price = courseDto.Price ?? 0;
                 course.IsPublished = courseDto.IsPublished;
                 course.CategoryId = courseDto.CategoryId;
-                course.Level = (LanguageLevel)1;
+                course.Level = courseDto.Level;
                 course.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
 
-                var updatedCourse = await GetCourseWithDetailsAsync(courseId);
-                return Results.Ok(updatedCourse);
+                // Retourner un DTO sans références circulaires
+                var updatedCourseDto = new CourseDto
+                {
+                    Id = course.Id,
+                    UserId = course.UserId,
+                    Title = course.Title,
+                    Description = course.Description,
+                    ImageUrl = course.ImageUrl,
+                    Price = course.Price,
+                    IsPublished = course.IsPublished,
+                    CategoryId = course.CategoryId,
+                    Category = new CategoryDto
+                    {
+                        Id = course.Category.Id,
+                        Name = course.Category.Name,
+                        Courses = new List<CourseDto>() // Liste vide pour éviter la récursion
+                    },
+                    Level = course.Level,
+                    Chapters = course.Chapters.Select(c => new ChapterDto
+                    {
+                        Id = c.Id,
+                        Title = c.Title,
+                        Description = c.Description,
+                        VideoUrl = c.VideoUrl,
+                        Position = c.Position,
+                        IsPublished = c.IsPublished,
+                        IsFree = c.IsFree,
+                        CourseId = c.CourseId,
+                        Course = null!, // Éviter la référence circulaire
+                        MuxData = c.MuxData != null ? new MuxDataDto
+                        {
+                            Id = c.MuxData.Id,
+                            AssetId = c.MuxData.AssetId,
+                            PlaybackId = c.MuxData.PlaybackId,
+                            ChapterId = c.Id,
+                            Chapter = null! // Éviter la référence circulaire
+                        } : null,
+                        UserProgress = new List<UserProgressDto>(), // Liste vide pour éviter la récursion
+                        CreatedAt = c.CreatedAt,
+                        UpdatedAt = c.UpdatedAt
+                    }).ToList(),
+                    Attachments = new List<AttachmentDto>(), // Liste vide pour éviter la récursion
+                    Purchases = new List<PurchaseDto>(), // Liste vide pour éviter la récursion
+                    CreatedAt = course.CreatedAt,
+                    UpdatedAt = course.UpdatedAt
+                };
+
+                return Results.Ok(updatedCourseDto);
             }
             catch (Exception ex)
             {
@@ -186,24 +237,41 @@ namespace LMSAPP.Server.Services
                     IsPublished = c.IsPublished,
                     IsFree = c.IsFree,
                     CourseId = c.CourseId,
-                    Course = null!, // Éviter la récursion infinie
+                    Course = new CourseDto
+                    {
+                        Id = course.Id,
+                        UserId = course.UserId,
+                        Title = course.Title,
+                        Description = course.Description,
+                        ImageUrl = course.ImageUrl,
+                        Price = course.Price,
+                        IsPublished = course.IsPublished,
+                        CategoryId = course.CategoryId,
+                        Category = null!,
+                        Level = course.Level,
+                        Chapters = null!,
+                        Attachments = null!,
+                        Purchases = null!,
+                        CreatedAt = course.CreatedAt,
+                        UpdatedAt = course.UpdatedAt
+                    },
                     MuxData = c.MuxData != null ? new MuxDataDto
                     {
                         AssetId = c.MuxData.AssetId,
                         PlaybackId = c.MuxData.PlaybackId,
                         Chapter = null!
                     } : null,
-                    UserProgress = c.UserProgress.Select(up => new UserProgressDto
+                    UserProgress = c.UserProgress?.Select(up => new UserProgressDto
                     {
                         Id = up.Id,
                         UserId = up.UserId,
-                        User = null!, // Éviter la récursion infinie
                         ChapterId = up.ChapterId,
-                        Chapter = null!, // Éviter la récursion infinie
                         IsCompleted = up.IsCompleted,
                         CreatedAt = up.CreatedAt,
-                        UpdatedAt = up.UpdatedAt
-                    }).ToList(),
+                        UpdatedAt = up.UpdatedAt,
+                        User = null!,
+                        Chapter = null!
+                    }).ToList() ?? new List<UserProgressDto>(),
                     CreatedAt = c.CreatedAt,
                     UpdatedAt = c.UpdatedAt
                 }).ToList(),

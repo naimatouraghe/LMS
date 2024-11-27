@@ -1,10 +1,10 @@
 import { Route, Routes, Navigate } from 'react-router-dom';
 import Layout from './components/layout/Layout';
-import Browse from './Pages/Browse';
-import TeacherDashboard from './Pages/Dashboard/TeacherDashboard';
-import AdminDashboard from './Pages/Dashboard/AdminDashboard';
-import Register from './Pages/Register';
-import Login from './Pages/Login';
+import Browse from './pages/Browse';
+import TeacherDashboard from './pages/Dashboard/TeacherDashboard';
+import AdminDashboard from './pages/Dashboard/AdminDashboard';
+import Register from './pages/Register';
+import Login from './pages/Login';
 import Profile from './pages/Profile';
 import Course from './pages/Course';
 import { useAuth } from './contexts/AuthContext';
@@ -13,6 +13,7 @@ import AnalyticsDashboard from './pages/Dashboard/AnalyticsDashboard';
 import CoursesDashboard from './pages/Dashboard/CoursesDashboard';
 import ChapterForm from './pages/teacher/ChapterForm';
 import InitialCourseForm from './pages/teacher/InitialCourseForm';
+import Dashboard from './Pages/Dashboard';
 // Composant de protection des routes
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, isAuthenticated } = useAuth();
@@ -137,7 +138,7 @@ function App() {
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <DashboardRouter />
+                <Dashboard />
               </ProtectedRoute>
             }
           />

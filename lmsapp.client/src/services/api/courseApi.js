@@ -16,15 +16,25 @@ export const courseApi = {
       const response = await axios.get(
         `/Course/${courseId}?includeCategory=true`
       );
+      console.log('Raw API response:', response.data);
 
       const courseData = {
         ...response.data,
-        userId: response.data.userId || '',
-        category: {
-          id: response.data.categoryId,
+        title: response.data.title || '',
+        description: response.data.description || '',
+        imageUrl: response.data.imageUrl || '',
+        price: response.data.price?.toString() || '0',
+        categoryId: response.data.categoryId || '',
+        category: response.data.category || {
+          id: '',
           name: '',
           courses: [],
         },
+        level: response.data.level || 0,
+        isPublished: response.data.isPublished || false,
+        chapters: response.data.chapters || [],
+        attachments: response.data.attachments || [],
+        purchases: response.data.purchases || [],
       };
 
       console.log('Transformed course data:', courseData);
@@ -47,8 +57,54 @@ export const courseApi = {
 
   updateCourse: async (courseId, courseDto) => {
     try {
-      console.log('Updating course:', courseId, courseDto);
-      const response = await axios.put(`/Course/${courseId}`, courseDto);
+      if (!courseDto.userId || !courseDto.title || !courseDto.categoryId) {
+        throw new Error('Missing required fields');
+      }
+
+      // Créer la structure exacte attendue par le backend
+      const requestData = {
+        courseDto: {
+          // Premier niveau : wrapper courseDto
+          userId: courseDto.userId, // Champ required
+          title: courseDto.title.trim(), // Champ required
+          category: {
+            // Champ required
+            id: courseDto.categoryId,
+            name: courseDto.category?.name || '',
+            courses: [],
+          },
+          chapters: courseDto.chapters.map((chapter) => ({
+            // Champ required
+            id: chapter.id,
+            title: chapter.title,
+            description: chapter.description || '',
+            videoUrl: chapter.videoUrl || '',
+            position: chapter.position,
+            isPublished: chapter.isPublished || false,
+            isFree: chapter.isFree || false,
+            courseId: courseId,
+            course: null,
+            userProgress: [],
+            muxData: null,
+          })),
+          // Champs optionnels
+          id: courseId,
+          description: courseDto.description || '',
+          imageUrl: courseDto.imageUrl || '',
+          price: Number(courseDto.price) || 0,
+          isPublished: Boolean(courseDto.isPublished),
+          categoryId: courseDto.categoryId,
+          level: Number(courseDto.level) || 0,
+          attachments: [],
+          purchases: [],
+          createdAt: courseDto.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      };
+
+      console.log('Sending request data:', requestData);
+
+      const response = await axios.put(`/Course/${courseId}`, requestData);
       console.log('Update response:', response.data);
       return response.data;
     } catch (error) {

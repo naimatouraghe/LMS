@@ -55,10 +55,11 @@ export default function CoursesDashboard() {
     const fetchCategories = async () => {
       try {
         const response = await courseApi.getCategories();
+        console.log('Categories loaded:', response);
         setCategories(response.value || []);
       } catch (err) {
-        setError('Erreur lors de la récupération des catégories');
-        console.error('Error fetching categories:', err);
+        console.error('Error loading categories:', err);
+        toast.error('Erreur lors du chargement des catégories');
       }
     };
 
@@ -88,29 +89,32 @@ export default function CoursesDashboard() {
         console.log('Chapters loaded:', chaptersResponse);
 
         if (courseResponse) {
-          // Utiliser le titre stocké dans le localStorage si pas de titre dans la réponse
-          const title =
-            courseResponse.title ||
-            localStorage.getItem('initialCourseTitle') ||
-            '';
-
-          setCourse((prev) => ({
-            ...prev,
+          // S'assurer que toutes les données sont correctement initialisées
+          const updatedCourse = {
             ...courseResponse,
-            title: title,
+            title: courseResponse.title || '',
             description: courseResponse.description || '',
             imageUrl: courseResponse.imageUrl || '',
             price: courseResponse.price?.toString() || '0',
             categoryId: courseResponse.categoryId || '',
+            category: {
+              id: courseResponse.category?.id || '',
+              name: courseResponse.category?.name || '',
+              courses: courseResponse.category?.courses || [],
+            },
             level: courseResponse.level || LANGUAGE_LEVELS.A1,
             isPublished: courseResponse.isPublished || false,
             chapters: chaptersResponse?.value || [],
-          }));
+            attachments: courseResponse.attachments || [],
+            purchases: courseResponse.purchases || [],
+          };
+
+          console.log('Setting course state:', updatedCourse);
+          setCourse(updatedCourse);
         }
       } catch (err) {
         console.error('Error loading course:', err);
-        setError('Erreur lors du chargement du cours et des chapitres');
-        toast.error('Erreur lors du chargement du cours');
+        setError('Erreur lors du chargement du cours');
       } finally {
         setIsLoading(false);
       }
@@ -146,40 +150,63 @@ export default function CoursesDashboard() {
       setIsLoading(true);
       setError(null);
 
-      if (!course.title || !user?.id) {
-        setError('Veuillez remplir tous les champs obligatoires');
+      if (!user?.id || !course.title || !course.categoryId) {
+        toast.error('Missing required fields');
         return;
       }
 
-      // Structurer les données selon le DTO attendu par le backend
+      // Préparer les données requises selon la structure exacte du CourseDto
       const courseDto = {
-        userId: user.id,
-        title: course.title,
+        id: courseId,
+        userId: user.id, // required
+        title: course.title.trim(), // required
         description: course.description || '',
         imageUrl: course.imageUrl || '',
         price: parseFloat(course.price) || 0,
-        isPublished: course.isPublished || false,
-        categoryId: course.categoryId || null,
-        level: course.level || 0,
-        category: course.category || null,
-        chapters: course.chapters || [],
+        isPublished: Boolean(course.isPublished),
+        categoryId: course.categoryId,
+        category: {
+          // required
+          id: course.categoryId,
+          name: course.category?.name || '',
+          courses: [],
+        },
+        level: parseInt(course.level) || 0,
+        chapters: (course.chapters || []).map((chapter) => ({
+          // required
+          id: chapter.id,
+          title: chapter.title,
+          description: chapter.description || '',
+          videoUrl: chapter.videoUrl || '',
+          position: chapter.position,
+          isPublished: chapter.isPublished || false,
+          isFree: chapter.isFree || false,
+          courseId: courseId,
+          course: null,
+          userProgress: [],
+          muxData: null,
+        })),
+        attachments: course.attachments || [],
+        purchases: course.purchases || [],
+        createdAt: course.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
 
-      console.log('Sending course update:', courseDto);
-
-      const response = await courseApi.updateCourse(courseId, courseDto);
-
-      console.log('Course updated:', response);
+      // Envoyer la requête avec le wrapper courseDto
+      const response = await courseApi.updateCourse(courseId, {
+        courseDto: courseDto, // Wrapper le DTO comme attendu par le backend
+      });
 
       if (response) {
+        setCourse((prev) => ({
+          ...prev,
+          ...response,
+          price: response.price?.toString() || '0',
+        }));
         toast.success('Cours mis à jour avec succès');
-        navigate('/teacher');
       }
     } catch (err) {
       console.error('Error updating course:', err);
-      setError(
-        err.response?.data?.message || 'Erreur lors de la mise à jour du cours'
-      );
       toast.error('Erreur lors de la mise à jour du cours');
     } finally {
       setIsLoading(false);
@@ -276,7 +303,7 @@ export default function CoursesDashboard() {
                   </Button>
                 </div>
                 <Input
-                  value={course.title}
+                  value={course.title || ''}
                   onChange={(e) => updateCourse('title', e.target.value)}
                   placeholder="e.g. 'Advanced web development'"
                   className="w-full"
@@ -292,7 +319,7 @@ export default function CoursesDashboard() {
                   </Button>
                 </div>
                 <Textarea
-                  value={course.description}
+                  value={course.description || ''}
                   onChange={(e) => updateCourse('description', e.target.value)}
                   placeholder="Brief description of your course"
                   rows={4}
@@ -307,7 +334,7 @@ export default function CoursesDashboard() {
                   </Button>
                 </div>
                 <ImageUpload
-                  value={course.imageUrl}
+                  value={course.imageUrl || ''}
                   onChange={(url) => updateCourse('imageUrl', url)}
                 />
               </div>
@@ -325,11 +352,11 @@ export default function CoursesDashboard() {
                 </Button>
               </div>
               <Select
-                value={course.categoryId}
+                value={course.categoryId || ''}
                 onChange={(e) => updateCourse('categoryId', e.target.value)}
                 className="max-w-[200px]"
               >
-                <option value="">Select a category</option>
+                <option value="">Sélectionner une catégorie</option>
                 {categories.map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
