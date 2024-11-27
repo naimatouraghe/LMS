@@ -18,8 +18,9 @@ export const CourseCard = ({ course, progress }) => {
 
   // Détermine le statut du cours
   const isPurchased = progress !== undefined;
-  const isCompleted = progress === 100;
+  const isCompleted = progress >= 100;
   const isInProgress = progress > 0 && progress < 100;
+  const isNotStarted = progress === 0;
 
   return (
     <Link
@@ -33,7 +34,9 @@ export const CourseCard = ({ course, progress }) => {
       {isPurchased && (
         <div className="absolute top-2 right-2 z-10 bg-white p-2 rounded-full shadow">
           {isCompleted && <CheckCircle className="h-4 w-4 text-green-600" />}
-          {isInProgress && <PlayCircle className="h-4 w-4 text-blue-600" />}
+          {(isInProgress || isNotStarted) && (
+            <PlayCircle className="h-4 w-4 text-blue-600" />
+          )}
         </div>
       )}
 

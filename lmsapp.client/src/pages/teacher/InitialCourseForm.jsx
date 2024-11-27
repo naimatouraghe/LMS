@@ -43,22 +43,21 @@ export default function InitialCourseForm() {
         return;
       }
 
-      // Créer l'objet avec les données minimales requises
+      console.log('Submitting title:', title.trim());
+
       const initialCourseDto = {
         title: title.trim(),
       };
 
-      console.log('Creating initial course with data:', initialCourseDto);
-
       const response = await courseApi.createInitialCourse(initialCourseDto);
-
-      console.log('Response from course creation:', response);
+      console.log('Initial course created:', response);
 
       if (response?.id) {
+        // Stockons le titre dans le localStorage pour le récupérer dans le dashboard
+        localStorage.setItem('initialCourseTitle', title.trim());
+
         toast.success('Cours créé avec succès');
         navigate(`/teacher/courses/${response.id}`);
-      } else {
-        throw new Error('Réponse invalide du serveur');
       }
     } catch (err) {
       console.error('Error creating course:', err);
