@@ -2,60 +2,65 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: 
+    branches:
       - master
       - develop
-      - 'feature/**'
-      - 'hotfix/**'
-      - 'release/**'    # Ajout des branches release
+      - "feature/**"
+      - "hotfix/**"
+      - "release/**" # Ajout des branches release
   pull_request:
-    branches: 
+    branches:
       - master
       - develop
-      - 'release/**'    # Ajout pour les PR vers les releases
+      - "release/**" # Ajout pour les PR vers les releases
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - uses: actions/checkout@v3
-    
-    # Configuration .NET
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: '8.0.x'
-        
-    - name: Restore .NET dependencies
-      run: dotnet restore LMSAPP.Server/lmsapp.Server.csproj
-      
-    - name: Build .NET
-      run: dotnet build LMSAPP.Server/lmsapp.Server.csproj --configuration Release --no-restore
+      - uses: actions/checkout@v3
 
-    # Configuration Node.js pour React
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18.x'
-        cache: 'npm'
-        cache-dependency-path: './lmsapp.client/package-lock.json'
+      # Configuration .NET
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: "8.0.x"
 
-    - name: Install React dependencies
-      working-directory: ./lmsapp.client
-      run: npm ci
-      
-    - name: Build React
-      working-directory: ./lmsapp.client
-      run: npm run build
+      - name: Restore .NET dependencies
+        run: dotnet restore LMSAPP.Server/lmsapp.Server.csproj
 
-    # Build de la solution complète
-    - name: Build Solution
-      run: dotnet build LMSAPP.sln --configuration Release
+      - name: Build .NET
+        run: dotnet build LMSAPP.Server/lmsapp.Server.csproj --configuration Release --no-restore
 
-    # Étape supplémentaire pour les branches release
-    - name: Additional Release Checks
-      if: startsWith(github.ref, 'refs/heads/release/')
-      run: |
-        echo "Executing additional release validation steps..."
-        # Ici vous pourrez ajouter des tests supplémentaires spécifiques aux releases
+      # Configuration Node.js pour React
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18.x"
+          cache: "npm"
+          cache-dependency-path: "./lmsapp.client/package-lock.json"
+
+      - name: Install React dependencies
+        working-directory: ./lmsapp.client
+        run: |
+          npm ci
+          mkdir -p node_modules/.vite
+
+      - name: Build React
+        working-directory: ./lmsapp.client
+        run: |
+          VITE_DEV_SERVER_HTTPS=false npm run build
+        env:
+          CI: true
+
+      # Build de la solution complète
+      - name: Build Solution
+        run: dotnet build LMSAPP.sln --configuration Release
+
+      # Étape supplémentaire pour les branches release
+      - name: Additional Release Checks
+        if: startsWith(github.ref, 'refs/heads/release/')
+        run: |
+          echo "Executing additional release validation steps..."
+          # Ici vous pourrez ajouter des tests supplémentaires spécifiques aux releases

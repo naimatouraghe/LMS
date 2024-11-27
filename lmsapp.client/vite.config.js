@@ -4,40 +4,35 @@ import { defineConfig } from 'vite';
 import plugin from '@vitejs/plugin-react';
 import fs from 'fs';
 import path from 'path';
-import child_process from 'child_process';
 import { env } from 'process';
 
-const baseFolder =
-  env.APPDATA !== undefined && env.APPDATA !== ''
-    ? `${env.APPDATA}/ASP.NET/https`
-    : `${env.HOME}/.aspnet/https`;
+// Fonction pour vérifier si on est en environnement CI
+const isCI = process.env.CI === 'true';
 
-const certificateName = 'lmsapp.client';
-const certFilePath = path.join(baseFolder, `${certificateName}.pem`);
-const keyFilePath = path.join(baseFolder, `${certificateName}.key`);
+// Configuration HTTPS seulement si on n'est pas en CI
+const getHttpsConfig = () => {
+  if (isCI) return false;
 
-if (!fs.existsSync(certFilePath) || !fs.existsSync(keyFilePath)) {
-  if (
-    0 !==
-    child_process.spawnSync(
-      'dotnet',
-      [
-        'dev-certs',
-        'https',
-        '--export-path',
-        certFilePath,
-        '--format',
-        'Pem',
-        '--no-password',
-      ],
-      { stdio: 'inherit' }
-    ).status
-  ) {
-    throw new Error('Could not create certificate.');
+  const baseFolder =
+    env.APPDATA !== undefined && env.APPDATA !== ''
+      ? `${env.APPDATA}/ASP.NET/https`
+      : `${env.HOME}/.aspnet/https`;
+
+  const certificateName = 'lmsapp.client';
+  const certFilePath = path.join(baseFolder, `${certificateName}.pem`);
+  const keyFilePath = path.join(baseFolder, `${certificateName}.key`);
+
+  if (fs.existsSync(certFilePath) && fs.existsSync(keyFilePath)) {
+    return {
+      key: fs.readFileSync(keyFilePath),
+      cert: fs.readFileSync(certFilePath),
+    };
   }
-}
 
-// Définir l'URL du serveur backend de manière plus flexible
+  return false;
+};
+
+// Configuration du serveur backend
 const serverPort = env.ASPNETCORE_HTTPS_PORT || '7001';
 const serverUrl = `https://localhost:${serverPort}`;
 
@@ -64,9 +59,6 @@ export default defineConfig({
       },
     },
     port: 5173,
-    https: {
-      key: fs.readFileSync(keyFilePath),
-      cert: fs.readFileSync(certFilePath),
-    },
+    https: getHttpsConfig(),
   },
 });
