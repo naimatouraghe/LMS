@@ -1,0 +1,51 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    # Configuration .NET
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0.x'  # Mise à jour vers .NET 8.0 selon votre csproj
+        
+    - name: Restore .NET dependencies
+      run: dotnet restore LMSAPP.Server/lmsapp.Server.csproj
+      
+    - name: Build .NET
+      run: dotnet build LMSAPP.Server/lmsapp.Server.csproj --configuration Release --no-restore
+
+    # Configuration Node.js pour React
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+        cache-dependency-path: './lmsapp.client/package-lock.json'
+
+    - name: Install React dependencies
+      working-directory: ./lmsapp.client
+      run: npm ci
+      
+    - name: Build React
+      working-directory: ./lmsapp.client
+      run: npm run build
+      
+    # Les tests React sont commentés car Jest n'est pas encore configuré
+    # - name: Test React
+    #   working-directory: ./lmsapp.client
+    #   run: npm test
+
+    # Build de la solution complète
+    - name: Build Solution
+      run: dotnet build LMSAPP.sln --configuration Release
