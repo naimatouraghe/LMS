@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { courseApi } from '../../services/api/courseApi';
+import { toast } from 'react-hot-toast';
 
 export default function InitialCourseForm() {
   const navigate = useNavigate();
@@ -42,22 +43,29 @@ export default function InitialCourseForm() {
         return;
       }
 
-      const response = await courseApi.createInitialCourse({
+      // Créer l'objet avec les données minimales requises
+      const initialCourseDto = {
         title: title.trim(),
-      });
+      };
 
-      console.log('Initial course created:', response);
+      console.log('Creating initial course with data:', initialCourseDto);
+
+      const response = await courseApi.createInitialCourse(initialCourseDto);
+
+      console.log('Response from course creation:', response);
 
       if (response?.id) {
+        toast.success('Cours créé avec succès');
         navigate(`/teacher/courses/${response.id}`);
       } else {
-        throw new Error('No course ID received');
+        throw new Error('Réponse invalide du serveur');
       }
     } catch (err) {
       console.error('Error creating course:', err);
       setError(
         err.response?.data?.message || 'Erreur lors de la création du cours'
       );
+      toast.error('Erreur lors de la création du cours');
     } finally {
       setIsLoading(false);
     }

@@ -46,8 +46,15 @@ export const courseApi = {
   },
 
   updateCourse: async (courseId, courseDto) => {
-    const response = await axios.put(`/Course/${courseId}`, courseDto);
-    return response.data;
+    try {
+      console.log('Updating course:', courseId, courseDto);
+      const response = await axios.put(`/Course/${courseId}`, courseDto);
+      console.log('Update response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('API Error:', error.response?.data);
+      throw error;
+    }
   },
 
   deleteCourse: async (courseId) => {
@@ -61,16 +68,14 @@ export const courseApi = {
   },
 
   // Gestion des chapitres
-  addChapter: async (courseId, data) => {
+  addChapter: async (courseId, chapterDto) => {
     try {
-      console.log('Adding chapter:', data);
-
-      const response = await axios.post(`/Course/${courseId}/chapters`, data, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
+      console.log('Adding chapter to course:', courseId, chapterDto);
+      const response = await axios.post(
+        `/Course/${courseId}/chapters`,
+        chapterDto
+      );
+      console.log('Chapter creation response:', response.data);
       return response.data;
     } catch (error) {
       console.error('API Error:', error.response?.data);
@@ -194,7 +199,7 @@ export const courseApi = {
   createInitialCourse: async (initialCourseDto) => {
     try {
       console.log('Creating initial course:', initialCourseDto);
-      const response = await axios.post('Course/initial', initialCourseDto);
+      const response = await axios.post('/Course/initial', initialCourseDto);
       console.log('Initial course response:', response.data);
       return response.data;
     } catch (error) {

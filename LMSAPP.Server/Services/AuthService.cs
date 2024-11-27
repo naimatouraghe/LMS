@@ -46,6 +46,21 @@ namespace LMSAPP.Server.Services
         {
             try
             {
+                // Vérifier si l'email existe déjà
+                var existingUser = await _userManager.FindByEmailAsync(model.Email);
+                if (existingUser != null)
+                {
+                    return Results.BadRequest(new
+                    {
+                        errors = new[] {
+                            new {
+                                Code = "DuplicateEmail",
+                                Message = "This e-mail adress already exist."
+                            }
+                        }
+                    });
+                }
+
                 var user = new ApplicationUser
                 {
                     UserName = model.Email,
@@ -58,16 +73,23 @@ namespace LMSAPP.Server.Services
                 var result = await _userManager.CreateAsync(user, model.Password);
                 if (!result.Succeeded)
                 {
-                    return Results.BadRequest(result.Errors);
+                    var errors = result.Errors.Select(e => new
+                    {
+                        Code = e.Code,
+                        Message = e.Description
+                    })
+                    .Distinct();
+
+                    return Results.BadRequest(new { errors = errors });
                 }
 
                 await _userManager.AddToRoleAsync(user, model.Role);
-                return Results.Ok(new { Id = user.Id, Email = user.Email });
+                return Results.Ok(new { message = "Account created successfully" });
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating user");
-                return Results.Problem("An error occurred while creating the user");
+                return Results.Problem("A technical error occurred while creating the account");
             }
         }
 
@@ -222,7 +244,7 @@ namespace LMSAPP.Server.Services
 
                 if (!user.IsActive)
                 {
-                    return Results.BadRequest("Votre compte a été désactivé. Veuillez contacter l'administrateur pour plus d'informations.");
+                    return Results.BadRequest("Your account has been deactivated. Please contact the administrator for more information.");
                 }
 
                 var isPasswordValid = await _userManager.CheckPasswordAsync(user, model.Password);

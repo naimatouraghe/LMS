@@ -99,17 +99,21 @@ class AuthApi {
   async register(registerDto) {
     try {
       const response = await axios.post('/Auth/register', registerDto);
-
-      if (!response?.data?.value) {
-        throw new Error('Format de réponse invalide');
-      }
-
-      const { token, user } = response.data.value;
-      this.setToken(token);
-      this.setUser(user);
-      return { token, user };
+      return {
+        success: true,
+        message: response.data.message,
+      };
     } catch (error) {
-      console.error('API Error:', error.response?.data || error);
+      // Propager directement les erreurs du serveur
+      if (error.response?.data?.errors) {
+        throw {
+          response: {
+            data: {
+              errors: error.response.data.errors,
+            },
+          },
+        };
+      }
       throw error;
     }
   }
@@ -320,19 +324,17 @@ class AuthApi {
   async deactivateUser(userId) {
     try {
       if (!userId) {
-        throw new Error('ID utilisateur requis');
+        throw new Error('User ID is required');
       }
 
       console.log('Deactivating user with ID:', userId);
 
       const response = await axios.put(`/Auth/users/${userId}/deactivate`);
 
-      // Vérifier si la réponse existe
       if (!response?.data) {
-        throw new Error('Réponse invalide du serveur');
+        throw new Error('Invalid server response');
       }
 
-      // Nettoyer immédiatement les données locales
       this.setToken(null);
       this.setUser(null);
       localStorage.clear();
@@ -344,8 +346,7 @@ class AuthApi {
         error.response?.data?.message || error.message
       );
       throw new Error(
-        error.response?.data?.message ||
-          'Erreur lors de la désactivation du compte'
+        error.response?.data?.message || 'Error deactivating account'
       );
     }
   }
