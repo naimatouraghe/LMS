@@ -1,0 +1,57 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+      - "feature/**"
+      - "hotfix/**"
+  pull_request:
+    branches:
+      - master
+      - develop
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      # .NET
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore .NET dependencies
+        run: dotnet restore LMSAPP.Server/lmsapp.Server.csproj
+
+      - name: Build .NET
+        run: dotnet build LMSAPP.Server/lmsapp.Server.csproj --configuration Release --no-restore
+
+      # React
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18.x"
+          cache: "npm"
+          cache-dependency-path: "./lmsapp.client/package-lock.json"
+
+      - name: Install React dependencies
+        working-directory: ./lmsapp.client
+        run: |
+          npm ci
+          mkdir -p node_modules/.vite
+
+      - name: Build React
+        working-directory: ./lmsapp.client
+        env:
+          CI: true
+          VITE_API_URL: http://localhost:7001/api # Changé en http pour CI
+          VITE_DEV_SERVER_HTTPS: false
+        run: npm run build
+
+      # Build de la solution complète
+      - name: Build Solution
+        run: dotnet build LMSAPP.sln --configuration Release
