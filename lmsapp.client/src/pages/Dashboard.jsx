@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { CourseCard } from '@/components/CourseCard';
 import { Clock, CheckCircle } from 'lucide-react';
 import NavbarDesktop from '../components/layout/NavbarDesktop';
-import Login from '@/Pages/Login';
+import Login from '@/pages/Login';
 import { useAuth } from '@/contexts/AuthContext';
 import { paymentApi } from '@/services/api/paymentApi';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
