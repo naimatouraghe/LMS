@@ -38,19 +38,43 @@ jobs:
           cache: "npm"
           cache-dependency-path: "./lmsapp.client/package-lock.json"
 
+      - name: Debug file structure
+        working-directory: ./lmsapp.client
+        run: |
+          echo "Current directory structure:"
+          pwd
+          tree -L 3 ./
+
+          echo "\nContents of src/pages:"
+          ls -la src/pages/
+
+          echo "\nChecking Browse.jsx specifically:"
+          if [ -f "src/pages/Browse.jsx" ]; then
+            echo "Browse.jsx exists"
+            cat src/pages/Browse.jsx
+          else
+            echo "Browse.jsx does not exist"
+            echo "Git status:"
+            git status
+          fi
+
       - name: Install React dependencies
         working-directory: ./lmsapp.client
         run: |
           npm ci
           mkdir -p node_modules/.vite
+          mkdir -p src/pages
 
       - name: Build React
         working-directory: ./lmsapp.client
         env:
           CI: true
-          VITE_API_URL: https://localhost:7001/api # Changé en http pour CI
+          VITE_API_URL: https://localhost:7001/api
           VITE_DEV_SERVER_HTTPS: false
-        run: npm run build
+        run: |
+          # Vérifier que tous les fichiers sont bien présents
+          git ls-files
+          npm run build
 
       # Build de la solution complète
       - name: Build Solution
