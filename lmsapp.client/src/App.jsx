@@ -1,6 +1,6 @@
 import { Route, Routes, Navigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout.jsx';
-import Home from '@/pages/Dashboard';
+import Browse from '@/pages/Browse.jsx';
 import TeacherDashboard from '@/pages/Dashboard/TeacherDashboard';
 import AdminDashboard from '@/pages/Dashboard/AdminDashboard';
 import Register from '@/pages/Register';
@@ -69,7 +69,7 @@ function App() {
       <Layout>
         <Routes>
           {/* Routes publiques */}
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Browse />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
           <Route path="/courses/:courseId" element={<Course />} />

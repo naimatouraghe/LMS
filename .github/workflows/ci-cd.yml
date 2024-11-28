@@ -76,7 +76,7 @@ jobs:
         env:
           CI: true
           DEBUG: vite:*
-          VITE_API_URL: http://localhost:7001/api
+          VITE_API_URL: https://localhost:7001/api
           VITE_DEV_SERVER_HTTPS: false
         run: |
           # Vérifier si Browse.jsx existe, sinon le créer
@@ -92,7 +92,15 @@ jobs:
             };
             export default Browse;' > src/pages/Browse.jsx
           fi
-          npm run build --mode development
+
+          # Vérifier que index.html est au bon endroit
+          if [ ! -f "index.html" ]; then
+            echo "index.html not found in root directory"
+            exit 1
+          fi
+
+          # Build sans spécifier le mode
+          npm run build
 
       # Build de la solution complète
       - name: Build Solution

@@ -71,5 +71,6 @@ export default defineConfig({
         main: fileURLToPath(new URL('./index.html', import.meta.url)),
       },
     },
+    outDir: 'dist',
   },
 });
