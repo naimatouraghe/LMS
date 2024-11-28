@@ -34,49 +34,31 @@ const Browse = () => {
       try {
         setIsLoading(true);
 
-        // Charger d'abord les cours achetés si l'utilisateur est connecté
-        let purchasedCoursesIds = [];
-        if (isAuthenticated) {
-          const purchasedCoursesData = await courseApi.getPurchasedCourses();
-          // Vérifier si purchasedCoursesData est un tableau
-          const purchasedCourses = Array.isArray(purchasedCoursesData)
-            ? purchasedCoursesData
-            : purchasedCoursesData?.courses || [];
-
-          purchasedCoursesIds = purchasedCourses.map((course) => course.id);
-          console.log('Cours achetés:', purchasedCoursesIds); // Pour le débogage
-        }
-
-        // Charger tous les cours et les catégories
-        const [coursesData, categoriesData] = await Promise.all([
+        // Charger les catégories et les cours en parallèle
+        const [categoriesResponse, coursesData] = await Promise.all([
+          courseApi.getCategories(),
           courseApi.getCourses({
             searchTerm: searchQuery,
             category: selectedCategory,
           }),
-          courseApi.getCategories(),
         ]);
 
-        // Filtrer les cours achetés
-        const availableCourses = Array.isArray(coursesData)
-          ? coursesData.filter(
-              (course) => !purchasedCoursesIds.includes(course.id)
-            )
-          : [];
+        // La réponse de l'API inclut les catégories dans la propriété 'value'
+        const categories = categoriesResponse.value || [];
 
-        console.log('Cours disponibles:', availableCourses.length); // Pour le débogage
+        setCategories(
+          categories.map((category) => ({
+            id: category.id,
+            name: category.name,
+            countryCode: iconMap[category.name] || 'US',
+          }))
+        );
+
+        // Traiter les cours
+        const availableCourses = Array.isArray(coursesData) ? coursesData : [];
 
         setCourses(availableCourses);
         setFilteredCourses(availableCourses);
-
-        setCategories(
-          (Array.isArray(categoriesData) ? categoriesData : []).map(
-            (category) => ({
-              id: category.id,
-              name: category.name,
-              countryCode: iconMap[category.name] || 'US',
-            })
-          )
-        );
       } catch (err) {
         console.error('Error fetching initial data:', err);
         setError('Erreur lors du chargement des données');
@@ -87,7 +69,7 @@ const Browse = () => {
     };
 
     fetchInitialData();
-  }, [searchQuery, selectedCategory, isAuthenticated]);
+  }, [searchQuery, selectedCategory]);
 
   // Application des filtres
   useEffect(() => {

@@ -189,8 +189,14 @@ export const courseApi = {
 
   // Gestion des catégories
   getCategories: async () => {
-    const response = await axios.get('/Course/categories');
-    return response.data;
+    try {
+      const response = await axios.get('/Course/categories');
+      console.log('Categories response:', response.data); // Pour le débogage
+      return response.data; // Devrait contenir { value: [...categories] }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      return { value: [] };
+    }
   },
 
   createCategory: async (categoryDto) => {

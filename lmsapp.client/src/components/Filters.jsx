@@ -52,15 +52,16 @@ export const Filters = ({
     (c) => c.name === selectedCategory
   );
 
-  const renderFlag = (countryCode) => {
-    if (!countryCode) return null;
+  const renderFlag = (language) => {
+    const countryCode = iconMap[language];
     return (
       <ReactCountryFlag
         countryCode={countryCode}
         svg
         style={{
-          width: '1.5em',
-          height: '1.5em',
+          width: '20px',
+          height: '20px',
+          borderRadius: '50%',
         }}
       />
     );
@@ -156,7 +157,7 @@ export const Filters = ({
           >
             {selectedCategory ? (
               <>
-                {renderFlag(selectedCategoryData?.countryCode)}
+                {renderFlag(selectedCategory)}
                 <span className="text-sm font-medium">{selectedCategory}</span>
                 <span
                   onClick={(e) => {
@@ -205,15 +206,12 @@ export const Filters = ({
                         onSelectCategory(category.name);
                         closeAllDropdowns();
                       }}
-                      className={`w-full text-left px-3 py-2 rounded-md text-sm transition flex items-center gap-2
-                                            ${
-                                              selectedCategory === category.name
-                                                ? 'bg-slate-100'
-                                                : 'hover:bg-slate-50'
-                                            }`}
+                      className="flex items-center gap-3 w-full p-3 hover:bg-slate-50 transition"
                     >
-                      {renderFlag(category.countryCode)}
-                      <span>{category.name}</span>
+                      {renderFlag(category.name)}
+                      <span className="text-sm font-medium">
+                        {category.name}
+                      </span>
                     </button>
                   ))}
               </div>
@@ -471,8 +469,8 @@ export const Filters = ({
                                                     : 'hover:bg-slate-50'
                                                 }`}
                     >
-                      {renderFlag(category.countryCode)}
-                      <span className="text-sm font-medium">
+                      {renderFlag(category.name)}
+                      <span className="text-sm font-medium ml-2">
                         {category.name}
                       </span>
                     </button>
