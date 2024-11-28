@@ -33,8 +33,8 @@ const getHttpsConfig = () => {
 };
 
 // Configuration du serveur backend
-const serverPort = env.ASPNETCORE_HTTPS_PORT || '7001';
-const serverUrl = `https://localhost:${serverPort}`;
+const serverPort = env.ASPNETCORE_HTTPS_PORT || env.VITE_API_PORT || '7001';
+const serverUrl = env.VITE_API_URL || `https://localhost:${serverPort}`;
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -58,6 +58,7 @@ export default defineConfig({
         target: serverUrl,
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, ''),
+        changeOrigin: true,
       },
     },
     port: 5173,
