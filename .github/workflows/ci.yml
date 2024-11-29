@@ -98,8 +98,7 @@ jobs:
             -Dsonar.exclusions=**/obj/**,**/bin/**
             -Dsonar.cs.opencover.reportsPaths=**/coverage.opencover.xml
             -Dsonar.javascript.lcov.reportPaths=**/lcov.info
-            -Dsonar.branch.name=master
-            -Dsonar.branch.target=master
+            -Dsonar.branch.name=feature/setup-devops
 
       # Code Coverage
       - name: Generate coverage report
