@@ -3,11 +3,37 @@ import axios from '../axios';
 export const courseApi = {
   // Gestion des cours
   getCourses: async (params) => {
-    const { searchTerm, category } = params || {};
-    const response = await axios.get('/Course', {
-      params: { searchTerm, category },
-    });
-    return response.data;
+    const { searchTerm, category, level, priceRange, sort } = params || {};
+    try {
+      // Log des paramètres avant l'envoi
+      console.log('API Call Parameters:', {
+        searchTerm,
+        category,
+        level,
+        priceRange,
+        sort,
+      });
+
+      // Construction de l'URL avec les paramètres
+      const queryParams = new URLSearchParams();
+      if (searchTerm) queryParams.append('searchTerm', searchTerm);
+      if (category) queryParams.append('category', category);
+      if (level !== undefined && level !== 'all')
+        queryParams.append('level', level);
+      if (priceRange && priceRange !== 'All prices')
+        queryParams.append('priceRange', priceRange);
+      if (sort) queryParams.append('sort', sort);
+
+      const url = `/Course?${queryParams.toString()}`;
+      console.log('Final API URL:', url);
+
+      const response = await axios.get(url);
+      console.log('API Response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('API Error:', error.response?.data);
+      throw error;
+    }
   },
 
   getCourse: async (courseId) => {

@@ -27,9 +27,14 @@ namespace LMSAPP.Server.Controllers
         }
 
         [HttpGet]
-        public async Task<IResult> GetCourses([FromQuery] string? searchTerm, [FromQuery] string? category)
+        public async Task<IResult> GetCourses(
+            [FromQuery] string? searchTerm,
+            [FromQuery] string? category,
+            [FromQuery] int? level,
+            [FromQuery] string? priceRange,
+            [FromQuery] string? sort)
         {
-            return await _courseService.GetAllCoursesAsync(searchTerm, category);
+            return await _courseService.GetAllCoursesAsync(searchTerm, category, level, priceRange, sort);
         }
 
         [HttpGet("{id}")]

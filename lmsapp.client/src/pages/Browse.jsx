@@ -33,19 +33,37 @@ const Browse = () => {
     const fetchInitialData = async () => {
       try {
         setIsLoading(true);
+        setIsFiltering(true);
 
-        // Charger les catégories et les cours en parallèle
+        // Log pour déboguer
+        console.log('Fetching with params:', {
+          searchTerm: searchQuery,
+          category:
+            selectedCategory === 'All categories'
+              ? undefined
+              : selectedCategory,
+          level: selectedLevel === 'all' ? undefined : selectedLevel,
+          priceRange:
+            selectedPrice === 'All prices' ? undefined : selectedPrice,
+          sort: selectedSort,
+        });
+
         const [categoriesResponse, coursesData] = await Promise.all([
           courseApi.getCategories(),
           courseApi.getCourses({
-            searchTerm: searchQuery,
-            category: selectedCategory,
+            searchTerm: searchQuery || undefined,
+            category:
+              selectedCategory === 'All categories'
+                ? undefined
+                : selectedCategory,
+            level: selectedLevel === 'all' ? undefined : selectedLevel,
+            priceRange:
+              selectedPrice === 'All prices' ? undefined : selectedPrice,
+            sort: selectedSort || undefined,
           }),
         ]);
 
-        // La réponse de l'API inclut les catégories dans la propriété 'value'
         const categories = categoriesResponse.value || [];
-
         setCategories(
           categories.map((category) => ({
             id: category.id,
@@ -54,9 +72,7 @@ const Browse = () => {
           }))
         );
 
-        // Traiter les cours
-        const availableCourses = Array.isArray(coursesData) ? coursesData : [];
-
+        const availableCourses = coursesData.value || [];
         setCourses(availableCourses);
         setFilteredCourses(availableCourses);
       } catch (err) {
@@ -65,88 +81,17 @@ const Browse = () => {
       } finally {
         setIsInitialLoad(false);
         setIsLoading(false);
-      }
-    };
-
-    fetchInitialData();
-  }, [searchQuery, selectedCategory]);
-
-  // Application des filtres
-  useEffect(() => {
-    if (!courses.length) return;
-
-    const applyFilters = async () => {
-      try {
-        setIsFiltering(true);
-        let filteredData = courses;
-
-        // Filtre par catégorie
-        if (selectedCategory) {
-          filteredData = filteredData.filter(
-            (course) => course.category?.name === selectedCategory
-          );
-        }
-
-        // Filtre par prix
-        if (selectedPrice !== 'all') {
-          filteredData = filteredData.filter((course) => {
-            if (selectedPrice === 'free') return course.price === 0;
-            if (selectedPrice === 'paid') return course.price > 0;
-            return true;
-          });
-        }
-
-        // Filtre par niveau
-        if (selectedLevel !== 'all') {
-          filteredData = filteredData.filter(
-            (course) => course.level === selectedLevel
-          );
-        }
-
-        // Filtre par recherche
-        if (searchQuery) {
-          const query = searchQuery.toLowerCase();
-          filteredData = filteredData.filter(
-            (course) =>
-              course.title.toLowerCase().includes(query) ||
-              course.description.toLowerCase().includes(query)
-          );
-        }
-
-        // Tri
-        if (selectedSort) {
-          filteredData.sort((a, b) => {
-            switch (selectedSort) {
-              case 'price-asc':
-                return a.price - b.price;
-              case 'price-desc':
-                return b.price - a.price;
-              case 'title-asc':
-                return a.title.localeCompare(b.title);
-              case 'title-desc':
-                return b.title.localeCompare(a.title);
-              default:
-                return 0;
-            }
-          });
-        }
-
-        setFilteredCourses(filteredData);
-      } catch (error) {
-        console.error('Error applying filters:', error);
-      } finally {
         setIsFiltering(false);
       }
     };
 
-    applyFilters();
+    fetchInitialData();
   }, [
-    selectedCategory,
-    selectedPrice,
-    selectedLevel,
-    selectedSort,
     searchQuery,
-    courses,
+    selectedCategory,
+    selectedLevel,
+    selectedPrice,
+    selectedSort,
   ]);
 
   // Handlers des filtres

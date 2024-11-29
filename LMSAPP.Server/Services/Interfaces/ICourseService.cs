@@ -9,7 +9,13 @@ namespace LMSAPP.Server.Services.Interfaces
         Task<IResult> GetCourseAsync(Guid courseId);
         Task<IResult> UpdateCourseAsync(Guid courseId, CourseDto courseDto);
         Task<IResult> DeleteCourseAsync(Guid courseId);
-        Task<IResult> GetAllCoursesAsync(string? searchTerm = null, string? category = null);
+        Task<IResult> GetAllCoursesAsync(
+            string? searchTerm = null,
+            string? category = null,
+            int? level = null,
+            string? priceRange = null,
+            string? sort = null
+        );
         Task<IResult> GetUserCoursesAsync(string userId);
 
         // Chapter Management

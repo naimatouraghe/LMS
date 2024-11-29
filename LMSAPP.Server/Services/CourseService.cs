@@ -172,7 +172,12 @@ namespace LMSAPP.Server.Services
             }
         }
 
-        public async Task<IResult> GetAllCoursesAsync(string? searchTerm = null, string? category = null)
+        public async Task<IResult> GetAllCoursesAsync(
+            string? searchTerm = null,
+            string? category = null,
+            int? level = null,
+            string? priceRange = null,
+            string? sort = null)
         {
             try
             {
@@ -182,23 +187,64 @@ namespace LMSAPP.Server.Services
                     .Include(c => c.Attachments)
                     .Include(c => c.Purchases);
 
+                // Filtre par recherche
                 if (!string.IsNullOrEmpty(searchTerm))
                 {
                     searchTerm = searchTerm.ToLower();
                     query = query.Where(c =>
-                        (c.Title != null && c.Title.ToLower().Contains(searchTerm)) ||
-                        (c.Description != null && c.Description.ToLower().Contains(searchTerm)));
+                        c.Title.ToLower().Contains(searchTerm) ||
+                        c.Description.ToLower().Contains(searchTerm));
                 }
 
+                // Filtre par catégorie
                 if (!string.IsNullOrEmpty(category))
                 {
-                    query = query.Where(c => c.Category.Name.ToLower() == category.ToLower());
+                    query = query.Where(c => c.Category.Name == category);
                 }
+
+                // Filtre par niveau
+                if (level.HasValue)
+                {
+                    query = query.Where(c => (int)c.Level == level.Value);
+                }
+
+                // Filtre par prix
+                if (!string.IsNullOrEmpty(priceRange))
+                {
+                    switch (priceRange)
+                    {
+                        case "<30":
+                            query = query.Where(c => c.Price < 30);
+                            break;
+                        case "30-50":
+                            query = query.Where(c => c.Price >= 30 && c.Price <= 50);
+                            break;
+                        case "50-70":
+                            query = query.Where(c => c.Price > 50 && c.Price <= 70);
+                            break;
+                        case "70-90":
+                            query = query.Where(c => c.Price > 70 && c.Price <= 90);
+                            break;
+                        case ">90":
+                            query = query.Where(c => c.Price > 90);
+                            break;
+                    }
+                }
+
+                // Tri
+                query = sort switch
+                {
+                    "recent" => query.OrderByDescending(c => c.CreatedAt),
+                    "oldest" => query.OrderBy(c => c.CreatedAt),
+                    "price-asc" => query.OrderBy(c => c.Price),
+                    "price-desc" => query.OrderByDescending(c => c.Price),
+                    _ => query.OrderByDescending(c => c.CreatedAt)
+                };
 
                 var courses = await query.ToListAsync();
                 var courseDtos = courses.Select(MapCourseToDto).ToList();
 
-                return Results.Ok(courseDtos);
+                return Results.Ok(new { value = courseDtos });
             }
             catch (Exception ex)
             {
