@@ -2,80 +2,142 @@ name: Continuous Integration
 
 on:
   push:
-    branches:
-      - master
-      - develop
-      - "feature/**"
-      - "hotfix/**"
+    branches: [master, develop, "feature/**", "hotfix/**"]
   pull_request:
-    branches:
-      - master
-      - develop
+    branches: [master, develop]
+
+env:
+  DOTNET_VERSION: "8.0.x"
+  NODE_VERSION: "18.x"
 
 jobs:
-  build-and-test:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
-      # .NET
+      # Cache pour .NET
+      - name: Cache .NET packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: ${{ runner.os }}-nuget-
+
+      # Cache pour Node
+      - name: Cache Node modules
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-node-
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: "8.0.x"
-
-      - name: Restore .NET dependencies
-        run: dotnet restore LMSAPP.Server/lmsapp.Server.csproj
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Build .NET
-        run: dotnet build LMSAPP.Server/lmsapp.Server.csproj --configuration Release --no-restore
+        run: dotnet build LMSAPP.Server/lmsapp.Server.csproj --configuration Release
 
-      # React
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "18.x"
-          cache: "npm"
-          cache-dependency-path: "./lmsapp.client/package-lock.json"
-
-      - name: Debug file structure
-        working-directory: ./lmsapp.client
-        run: |
-          echo "Current directory structure:"
-          pwd
-          tree -L 3 ./
-
-          echo "\nContents of src/pages:"
-          ls -la src/pages/
-
-          echo "\nChecking Browse.jsx specifically:"
-          if [ -f "src/pages/Browse.jsx" ]; then
-            echo "Browse.jsx exists"
-            cat src/pages/Browse.jsx
-          else
-            echo "Browse.jsx does not exist"
-            echo "Git status:"
-            git status
-          fi
-
-      - name: Install React dependencies
-        working-directory: ./lmsapp.client
-        run: |
-          npm ci
-          mkdir -p node_modules/.vite
-          mkdir -p src/pages
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Build React
         working-directory: ./lmsapp.client
-        env:
-          CI: true
-          VITE_API_URL: https://localhost:7001/api
-          VITE_DEV_SERVER_HTTPS: false
         run: |
-          # Vérifier que tous les fichiers sont bien présents
-          git ls-files
+          npm ci
           npm run build
 
-      # Build de la solution complète
-      - name: Build Solution
-        run: dotnet build LMSAPP.sln --configuration Release
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Run .NET Tests
+        run: dotnet test LMSAPP.Server/lmsapp.Server.csproj --configuration Release
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Run React Tests
+        working-directory: ./lmsapp.client
+        run: |
+          npm ci
+          npm test
+
+  quality:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      # SonarCloud Scan
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      # Code Coverage
+      - name: Generate coverage report
+        run: |
+          dotnet test LMSAPP.Server/lmsapp.Server.csproj /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+
+      # ESLint pour React
+      - name: Run ESLint
+        working-directory: ./lmsapp.client
+        run: |
+          npm ci
+          npm run lint
+
+  package:
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      # Login to Docker Hub
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Build et Push Backend
+      - name: Build and push Backend
+        uses: docker/build-push-action@v4
+        with:
+          context: ./LMSAPP.Server
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/lmsapp-backend:latest
+
+      # Build et Push Frontend
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v4
+        with:
+          context: ./lmsapp.client
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/lmsapp-frontend:latest
+
+      # Create GitHub Release
+      - name: Create Release
+        if: github.ref == 'refs/heads/master'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Release v${{ github.run_number }}
+          draft: false
+          prerelease: false
