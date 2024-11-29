@@ -81,6 +81,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       # SonarCloud Scan
       - name: SonarCloud Scan
@@ -88,6 +90,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=naimatouraghe_LMS
+            -Dsonar.organization=naimatouraghe
+            -Dsonar.sources=.
+            -Dsonar.exclusions=**/obj/**,**/bin/**
+            -Dsonar.cs.opencover.reportsPaths=**/coverage.opencover.xml
+            -Dsonar.javascript.lcov.reportPaths=**/lcov.info
 
       # Code Coverage
       - name: Generate coverage report
