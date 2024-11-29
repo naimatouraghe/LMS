@@ -198,13 +198,13 @@ const Course = () => {
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-800 text-white">
               <Lock className="h-16 w-16 mb-4" />
               <p className="text-xl mb-4">
-                Vous devez acheter ce cours pour accéder à ce chapitre
+                You need to purchase this course to access this chapter
               </p>
               <button
                 onClick={() => handlePurchase(course.id)}
                 className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
               >
-                Acheter pour{' '}
+                Purchase for{' '}
                 {formatPrice(
                   parseFloat(course?.value?.price || course?.price || 0)
                 )}
@@ -218,6 +218,28 @@ const Course = () => {
               onEnded={() => handleChapterComplete(currentChapter.id)}
             />
           )}
+        </div>
+
+        {/* Section titre et description */}
+        <div className="p-4">
+          {/* Titre */}
+          <h2 className="text-2xl font-medium mb-2">{currentChapter.title}</h2>
+
+          {/* Ligne avec Chapter et Free badge */}
+          <div className="flex items-center gap-2 text-sm text-slate-600 mb-4">
+            <span>Chapter {currentChapter.position}</span>
+            {currentChapter.isFree && (
+              <span className="px-2 py-0.5 bg-emerald-500 text-white text-xs rounded-full">
+                Free
+              </span>
+            )}
+          </div>
+
+          {/* Description */}
+          <div className="mt-4">
+            <h3 className="font-medium mb-2">Description :</h3>
+            <p className="text-slate-600">{currentChapter.description}</p>
+          </div>
         </div>
       </>
     );
@@ -295,7 +317,7 @@ const Course = () => {
             </h1>
             {user?.id && (
               <span className="text-sm text-slate-600">
-                {courseProgress?.completionPercentage || 0}% terminé
+                {courseProgress?.completionPercentage || 0}% finished
               </span>
             )}
           </div>
@@ -304,7 +326,7 @@ const Course = () => {
           onClick={() => navigate('/browse')}
           className="text-sm bg-slate-200 px-2 py-1 rounded-md hover:bg-slate-300"
         >
-          Quitter
+          Close
         </button>
       </div>
 
@@ -313,7 +335,9 @@ const Course = () => {
         {/* Sidebar tablette - Style épuré */}
         <div className="hidden md:block bg-slate-50 border-r overflow-y-auto">
           <div className="p-4 border-b bg-white">
-            <h2 className="font-medium text-slate-800">Contenu du cours</h2>
+            <h2 className="font-medium text-slate-800 text-sm">
+              {course?.value?.title || 'Chargement...'}
+            </h2>
           </div>
           <div className="py-2">
             {chapters.map((chapter) => (
@@ -355,7 +379,7 @@ const Course = () => {
                     </span>
                     {chapter.isFree && (
                       <span className="flex-shrink-0 px-2 py-0.5 bg-emerald-500 text-white text-xs rounded-full">
-                        Gratuit
+                        Free
                       </span>
                     )}
                   </div>
@@ -373,7 +397,7 @@ const Course = () => {
             <div className="flex flex-col items-center justify-center h-full p-4">
               <AlertCircle className="h-16 w-16 text-slate-400 mb-4" />
               <h2 className="text-xl font-semibold text-center">
-                Sélectionnez un chapitre pour commencer
+                Select a chapter to begin
               </h2>
             </div>
           )}
