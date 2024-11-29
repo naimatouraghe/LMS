@@ -49,7 +49,7 @@ export const courseApi = {
         title: response.data.title || '',
         description: response.data.description || '',
         imageUrl: response.data.imageUrl || '',
-        price: response.data.price?.toString() || '0',
+        price: parseFloat(response.data.price) || 0,
         categoryId: response.data.categoryId || '',
         category: response.data.category || {
           id: '',

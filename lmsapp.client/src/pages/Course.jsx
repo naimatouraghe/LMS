@@ -20,6 +20,13 @@ import axios from 'axios';
 import ChapterItem from '@/components/ChapterItem';
 import { useAuth } from '@/contexts/AuthContext';
 
+const formatPrice = (price) => {
+  return new Intl.NumberFormat('fr-FR', {
+    style: 'currency',
+    currency: 'EUR',
+  }).format(price || 0);
+};
+
 const Course = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
@@ -37,7 +44,7 @@ const Course = () => {
   const [showChapters, setShowChapters] = useState(false);
 
   console.log('Course ID:', courseId);
-
+  console.log('Course data:', course);
   if (!courseId) {
     return <div>Course ID is missing.</div>;
   }
@@ -186,146 +193,31 @@ const Course = () => {
 
     return (
       <>
-        {/* Bouton menu mobile */}
-        <button
-          onClick={() => setShowChapters(true)}
-          className="lg:hidden fixed bottom-4 right-4 z-50 bg-sky-700 text-white p-3 rounded-full shadow-lg"
-        >
-          <Menu className="h-6 w-6" />
-        </button>
-
-        {/* Overlay mobile pour la sidebar */}
-        {showChapters && (
-          <div
-            className="lg:hidden fixed inset-0 bg-black/50 z-40"
-            onClick={() => setShowChapters(false)}
-          />
-        )}
-
-        {/* Sidebar mobile */}
-        <div
-          className={cn(
-            'fixed inset-0 z-50 bg-white transform transition-transform duration-300 lg:hidden',
-            showChapters ? 'translate-x-0' : 'translate-x-full'
-          )}
-        >
-          {/* Header du menu mobile */}
-          <div className="sticky top-0 bg-white border-b">
-            <div className="px-4 py-3 flex items-center justify-between">
-              <h2 className="text-lg font-medium">Chapitres</h2>
-              <button onClick={() => setShowChapters(false)}>
-                <X className="h-5 w-5" />
+        <div className="aspect-video relative">
+          {isLocked ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-800 text-white">
+              <Lock className="h-16 w-16 mb-4" />
+              <p className="text-xl mb-4">
+                Vous devez acheter ce cours pour accéder à ce chapitre
+              </p>
+              <button
+                onClick={() => handlePurchase(course.id)}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Acheter pour{' '}
+                {formatPrice(
+                  parseFloat(course?.value?.price || course?.price || 0)
+                )}
               </button>
             </div>
-          </div>
-
-          {/* Liste des chapitres */}
-          <div className="overflow-y-auto h-full">
-            {chapters.map((chapter) => (
-              <div
-                key={chapter.id}
-                className="flex items-center gap-3 px-4 py-3 border-b cursor-pointer hover:bg-slate-50"
-                onClick={() => {
-                  setCurrentChapter(chapter);
-                  setShowChapters(false);
-                }}
-              >
-                {chapter.isFree ? (
-                  <PlayCircle className="h-5 w-5 text-slate-500" />
-                ) : (
-                  <Lock className="h-5 w-5 text-slate-500" />
-                )}
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">
-                      {chapter.position}. {chapter.title}
-                    </span>
-                    {chapter.isFree && (
-                      <span className="px-2 py-0.5 bg-emerald-500 text-white text-xs rounded-full">
-                        Gratuit
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Contenu vidéo et informations */}
-        <div className="flex flex-col h-full">
-          <div className="relative h-[40vh] lg:h-[80vh]">
-            {isLocked ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/90 text-white">
-                <Lock className="h-12 w-12 mb-2" />
-                <p className="text-center px-4">
-                  Vous devez acheter ce cours pour accéder à ce chapitre
-                </p>
-                <button
-                  onClick={async () => {
-                    const response = await paymentApi.createCheckoutSession(
-                      user.id,
-                      courseId
-                    );
-                    if (response.sessionUrl)
-                      window.location.href = response.sessionUrl;
-                  }}
-                  className="mt-4 px-4 py-2 bg-sky-700 hover:bg-sky-800 rounded-md"
-                >
-                  Acheter pour {course?.price}€
-                </button>
-              </div>
-            ) : (
-              <video
-                className="h-full w-full object-contain bg-black"
-                src={currentChapter.videoUrl}
-                controls
-                onEnded={() => handleChapterComplete(currentChapter.id)}
-              />
-            )}
-          </div>
-
-          {/* Informations du chapitre en version mobile */}
-          <div className="p-4 flex-1 overflow-y-auto">
-            <div className="flex flex-col gap-4">
-              <div>
-                <h2 className="text-xl font-medium">{currentChapter.title}</h2>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-sm text-slate-600">
-                    Chapitre {currentChapter.position}
-                  </span>
-                  {currentChapter.isFree && (
-                    <span className="px-2 py-0.5 bg-emerald-500 text-white text-xs rounded-full">
-                      Gratuit
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Bouton de progression */}
-              {hasPurchased && (
-                <button
-                  onClick={() => handleChapterComplete(currentChapter.id)}
-                  disabled={isChapterCompleted(currentChapter.id)}
-                  className={cn(
-                    'w-full py-3 rounded-md text-center',
-                    isChapterCompleted(currentChapter.id)
-                      ? 'bg-emerald-700 text-white'
-                      : 'bg-emerald-600 text-white hover:bg-emerald-700'
-                  )}
-                >
-                  {isChapterCompleted(currentChapter.id)
-                    ? 'Chapitre terminé ✓'
-                    : 'Marquer comme terminé'}
-                </button>
-              )}
-
-              <div className="mt-4">
-                <h3 className="font-medium mb-2">Description :</h3>
-                <p className="text-slate-600">{currentChapter.description}</p>
-              </div>
-            </div>
-          </div>
+          ) : (
+            <video
+              className="h-full w-full object-contain bg-black"
+              src={currentChapter.videoUrl}
+              controls
+              onEnded={() => handleChapterComplete(currentChapter.id)}
+            />
+          )}
         </div>
       </>
     );
