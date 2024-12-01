@@ -84,7 +84,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      # SonarCloud Scan
+      # Génération des rapports de couverture avant SonarCloud
+      - name: Generate coverage report
+        run: |
+          dotnet test LMSAPP.Server/lmsapp.Server.csproj /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
+
+      # SonarCloud Scan avec configuration améliorée
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:
@@ -95,17 +100,14 @@ jobs:
             -Dsonar.projectKey=naimatouraghe_LMS
             -Dsonar.organization=naimatouraghe
             -Dsonar.sources=.
-            -Dsonar.exclusions=**/obj/**,**/bin/**
+            -Dsonar.exclusions=**/obj/**,**/bin/**,**/dist/**,**/node_modules/**
             -Dsonar.cs.opencover.reportsPaths=**/coverage.opencover.xml
             -Dsonar.javascript.lcov.reportPaths=**/lcov.info
-            -Dsonar.branch.name=feature/setup-devops
+            -Dsonar.coverage.exclusions=**/*.test.js,**/*.spec.js,**/*.test.ts,**/*.spec.ts
+            -Dsonar.branch.autoconfig.disabled=false
+            -Dsonar.branch.target=master
 
-      # Code Coverage
-      - name: Generate coverage report
-        run: |
-          dotnet test LMSAPP.Server/lmsapp.Server.csproj /p:CollectCoverage=true /p:CoverletOutputFormat=opencover
-
-      # ESLint pour React
+      # ESLint pour React (gardé de votre configuration originale)
       - name: Run ESLint
         working-directory: ./lmsapp.client
         run: |
